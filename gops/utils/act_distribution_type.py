@@ -11,6 +11,8 @@
 
 
 import torch
+import scipy.integrate as integrate
+import numpy as np
 
 EPS = 1e-6
 
@@ -61,9 +63,31 @@ class TanhGaussDistribution:
             * (1 + EPS - torch.pow(torch.tanh(action), 2))
         ).sum(-1)
         return log_prob
-
+        
     def entropy(self):
-        return self.gauss_distribution.entropy()
+        gauss_entropy = self.gauss_distribution.entropy().detach().numpy()[0]
+        entropy_tanh = 0
+        mus = self.mean.detach().numpy()[0]
+        stds= self.std.detach().numpy()[0]
+        bound = ((self.act_high_lim - self.act_low_lim)/2).detach().numpy()
+
+        def func(x):
+            y = -2/(np.sqrt(2*np.pi))*np.exp(-(x)**2/(2))*np.log(np.cosh(sigma*x+mu))
+            return y
+
+        for i in range(len(mus)):
+            a = bound[i]
+            mu = mus[i]
+            sigma = stds[i]
+            entropy_tanh = entropy_tanh + integrate.quad(func, -6, 6)[0] + np.log(a)
+
+        entropy_tanh = entropy_tanh + gauss_entropy
+        # print(entropy_tanh)
+        if np.isnan(entropy_tanh):
+            entropy_tanh = - len(mus)
+
+        return entropy_tanh
+
 
     def mode(self):
         return (self.act_high_lim - self.act_low_lim) / 2 * torch.tanh(self.mean) + (

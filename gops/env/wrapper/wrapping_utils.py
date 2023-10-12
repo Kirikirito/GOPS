@@ -50,7 +50,7 @@ def wrapping_env(
     obs_noise_data: Optional[list] = None,
     repeat_num: Optional[int] = None,
     sum_reward: bool = True,
-    action_scale: bool = True,
+    action_scale: bool = False,
     min_action: Union[float, int, np.ndarray, list] = -1.0,
     max_action: Union[float, int, np.ndarray, list] = 1.0,
 ):
@@ -114,7 +114,7 @@ def wrapping_model(
     mask_at_done: bool = True,
     repeat_num: Optional[int] = None,
     sum_reward: bool = True,
-    action_scale: bool = True,
+    action_scale: bool = False,
     min_action: Union[float, int, np.ndarray, list] = -1.0,
     max_action: Union[float, int, np.ndarray, list] = 1.0,
 ):

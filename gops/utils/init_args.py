@@ -79,8 +79,9 @@ def init_args(env, **args):
     else:
         args["additional_info"] = {}
 
-    if hasattr(args, "value_func_type") and args["value_func_type"] == "CNN_SHARED":
-        if hasattr(args, "policy_func_type"):
+    #if hasattr(args, "value_func_type") and args["value_func_type"] == "CNN_SHARED": args is a args namespace first check if it has the arg value_func_type
+    if args.get("value_func_type", None) == "CNN_SHARED":
+        if args.get("policy_func_type", None) is not None:
             assert (
                 args["value_func_type"] == args["policy_func_type"]
             ), "The function type of both value and policy should be CNN_SHARED"

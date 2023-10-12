@@ -14,7 +14,7 @@ from gops.sys_simulator.sys_run import PolicyRunner
 import os
 def get_policy_dir_iter_list():
     envs = ["humanoid"]
-    algs = ["DSAC"]
+    algs = ["SAC"]
     base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),'results')
     policy_dir_list = []
     polcicy_iter_list = []

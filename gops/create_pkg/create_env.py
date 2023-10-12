@@ -39,6 +39,7 @@ def create_env(**kwargs):
     obs_shift = kwargs.get("obs_shift", None)
     obs_noise_type = kwargs.get("obs_noise_type", None)
     obs_noise_data = kwargs.get("obs_noise_data", None)
+    action_scale = kwargs.get("action_scale", False)
     env = wrapping_env(
         env=env,
         max_episode_steps=max_episode_steps,
@@ -48,6 +49,7 @@ def create_env(**kwargs):
         obs_scale=obs_scale,
         obs_noise_type=obs_noise_type,
         obs_noise_data=obs_noise_data,
+        action_scale=action_scale,
     )
 
     print("Create environment successfully!")

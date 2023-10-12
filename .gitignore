@@ -162,3 +162,7 @@ dmypy.json
 
 # experiment file
 experiment
+test/
+estimate/
+# expect for the files in  Q_estimate folder in the test folder
+!test/Q_estimate
