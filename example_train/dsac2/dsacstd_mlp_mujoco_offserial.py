@@ -58,8 +58,8 @@ if __name__ == "__main__":
         "--value_hidden_activation", type=str, default="gelu", help="Options: relu/gelu/elu/selu/sigmoid/tanh"
     )
     parser.add_argument("--value_output_activation", type=str, default="linear", help="Options: linear/tanh")
-    parser.add_argument("--value_min_log_std", type=int, default=-0.1)
-    parser.add_argument("--value_max_log_std", type=int, default=5)
+    parser.add_argument("--value_min_log_std", type=int, default=-8)
+    parser.add_argument("--value_max_log_std", type=int, default=8)
 
     # 2.2 Parameters of policy approximate function
     parser.add_argument(
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     parser.add_argument("--auto_alpha", type=bool, default=True)
     parser.add_argument("--alpha", type=bool, default=0.2)
     parser.add_argument("--delay_update", type=int, default=2)
-    parser.add_argument("--TD_bound", type=float, default=10)
+    parser.add_argument("--TD_bound", type=float, default=1)
     parser.add_argument("--bound", default=True)
 
     ################################################

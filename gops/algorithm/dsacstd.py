@@ -200,14 +200,11 @@ class DSACSTD(AlgorithmBase):
 
     def __q_evaluate(self, obs, act, qnet, use_min=False):
         StochaQ = qnet(obs, act)
-        mean, log_std = StochaQ[..., 0], StochaQ[..., -1]
-        std = log_std.exp()
-        normal = Normal(torch.zeros(mean.shape), torch.ones(std.shape))
-        if use_min:
-            z = -torch.abs(normal.sample())
-        else:
-            z = normal.sample()
-            z = torch.clamp(z, -3, 3)
+        mean, std = StochaQ[..., 0], StochaQ[..., -1]
+        # std = log_std.exp()
+        normal = Normal(torch.zeros_like(mean), torch.ones_like(std))
+        z = normal.sample()
+        z = torch.clamp(z, -3, 3)
         q_value = mean + torch.mul(z, std)
         return mean, std, q_value
 

@@ -32,8 +32,8 @@ if __name__ == "__main__":
 
     ################################################
     # Key Parameters for users
-    parser.add_argument("--env_id", type=str, default="gym_ant", help="id of environment")
-    parser.add_argument("--algorithm", type=str, default="DSAC", help="RL algorithm")
+    parser.add_argument("--env_id", type=str, default="gym_halfcheetah", help="id of environment")
+    parser.add_argument("--algorithm", type=str, default="DSAC22MEANT", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=False, help="Enable CUDA")
     parser.add_argument("--seed", default=12345, help="Enable CUDA")
     ################################################
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     parser.add_argument("--auto_alpha", type=bool, default=True)
     parser.add_argument("--alpha", type=bool, default=0.2)
     parser.add_argument("--delay_update", type=int, default=2)
-    parser.add_argument("--TD_bound", type=float, default=10)
+    parser.add_argument("--TD_bound", type=float, default=1)
     parser.add_argument("--bound", default=True)
 
     ################################################
