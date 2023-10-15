@@ -14,7 +14,7 @@
 #  Update: 2021-03-05, Ziqing Gu: create DSAC algorithm
 #  Update: 2021-03-05, Wenxuan Wang: debug DSAC algorithm
 
-__all__=["ApproxContainer","DSAC22MEANT"]
+__all__=["ApproxContainer","DSAC22MEANNT"]
 import time
 from copy import deepcopy
 from typing import Tuple
@@ -74,7 +74,7 @@ class ApproxContainer(ApprBase):
         return self.policy.get_act_dist(logits)
 
 
-class DSAC22MEANT(AlgorithmBase):
+class DSAC22MEANNT(AlgorithmBase):
     """Modified DSAC algorithm
 
     Paper: https://arxiv.org/pdf/2001.02811
@@ -299,8 +299,8 @@ class DSAC22MEANT(AlgorithmBase):
         target_q_sample = r + (1 - done) * self.gamma * (
             q_next_sample - self.__get_alpha() * log_prob_a_next
         )
-        # td_bound = 3 * torch.mean(q_std)
-        td_bound = self._td_bound
+        td_bound = 3 * torch.mean(q_std)
+        # td_bound = self._td_bound
         difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
         target_q_bound = q + difference
         return target_q.detach(), target_q_bound.detach()

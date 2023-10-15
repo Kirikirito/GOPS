@@ -31,11 +31,13 @@ if __name__ == "__main__":
     ################################################
     # Key Parameters for users
     parser.add_argument("--env_id", type=str, default="gym_cartpoleconti", help="id of environment")
-    parser.add_argument("--algorithm", type=str, default="DSAC", help="RL algorithm")
+    parser.add_argument("--algorithm", type=str, default="DSAC22MEANT", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=False, help="Enable CUDA")
+    parser.add_argument("--seed", type=int, default=2807268183, help="random seed")
+    parser.add_argument("--save_folder", type=str, default="/home/wangwenxuan/gops_idp/gops/results/gym_cartpoleconti/Reward_1_softplus_std_t_0.01")
     ################################################
     # 1. Parameters for environment
-    parser.add_argument("--reward_scale", type=float, default=0.1, help="reward scale factor")
+    parser.add_argument("--reward_scale", type=float, default=1, help="reward scale factor")
     parser.add_argument("--action_type", type=str, default="continu", help="Options: continu/discret")
     parser.add_argument("--is_render", type=bool, default=False, help="Draw environment animation")
     parser.add_argument("--is_adversary", type=bool, default=False, help="Adversary training")
@@ -55,7 +57,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--value_output_activation", type=str, default="linear", help="Options: linear/tanh")
     parser.add_argument("--value_min_log_std", type=int, default=-0.1)
-    parser.add_argument("--value_max_log_std", type=int, default=4)
+    parser.add_argument("--value_max_log_std", type=int, default=3)
 
     # 2.2 Parameters of policy approximate function
     parser.add_argument(
@@ -93,7 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("--alpha", type=float, default=0.2)
     parser.add_argument("--auto_alpha", type=bool, default=True)
     parser.add_argument("--delay_update", type=int, default=2)
-    parser.add_argument("--TD_bound", type=float, default=10)
+    parser.add_argument("--TD_bound", type=float, default=1)
     parser.add_argument("--bound", default=True)
 
     ################################################
@@ -105,7 +107,7 @@ if __name__ == "__main__":
         help="Options: on_serial_trainer, on_sync_trainer, off_serial_trainer, off_async_trainer",
     )
     # Maximum iteration number
-    parser.add_argument("--max_iteration", type=int, default=6400)
+    parser.add_argument("--max_iteration", type=int, default=36400)
     parser.add_argument(
         "--ini_network_dir",
         type=str,
@@ -143,7 +145,7 @@ if __name__ == "__main__":
 
     ################################################
     # 7. Data savings
-    parser.add_argument("--save_folder", type=str, default=None)
+
     # Save value/policy every N updates
     parser.add_argument("--apprfunc_save_interval", type=int, default=5000)
     # Save key info every N updates
