@@ -14,7 +14,7 @@
 #  Update: 2021-03-05, Ziqing Gu: create DSAC algorithm
 #  Update: 2021-03-05, Wenxuan Wang: debug DSAC algorithm
 
-__all__=["ApproxContainer","DSAC2W2MEANX"]
+__all__=["ApproxContainer","DSAC22MEANX"]
 import time
 from copy import deepcopy
 from typing import Tuple
@@ -74,7 +74,7 @@ class ApproxContainer(ApprBase):
         return self.policy.get_act_dist(logits)
 
 
-class DSAC2W2MEANX(AlgorithmBase):
+class DSAC22MEANX(AlgorithmBase):
     """Modified DSAC algorithm
 
     Paper: https://arxiv.org/pdf/2001.02811
@@ -91,7 +91,7 @@ class DSAC2W2MEANX(AlgorithmBase):
     def __init__(self, index=0, **kwargs):
         super().__init__(index, **kwargs)
         self.networks = ApproxContainer(**kwargs)
-        self.gamma = kwargs["gamma"]
+        self.gamma = 0.99
         self.tau = kwargs["tau"]
         self.target_entropy = -kwargs["action_dim"]
         self.auto_alpha = kwargs["auto_alpha"]
@@ -214,8 +214,8 @@ class DSAC2W2MEANX(AlgorithmBase):
 
     def __q_evaluate(self, obs, act, qnet):
         StochaQ = qnet(obs, act)
-        mean, log_std = StochaQ[..., 0], StochaQ[..., -1]
-        std = log_std.exp()
+        mean, std = StochaQ[..., 0], StochaQ[..., -1]
+        # std = log_std.exp()
         normal = Normal(torch.zeros_like(mean), torch.ones_like(std))
         z = normal.sample()
         z = torch.clamp(z, -3, 3)
@@ -246,6 +246,7 @@ class DSAC2W2MEANX(AlgorithmBase):
         )
         q_next = torch.min(q1_next, q2_next)
         q_next_sample = torch.where(q1_next < q2_next, q1_next_sample, q2_next_sample)
+        q_next_std = torch.where(q1_next < q2_next, q1_next_std, q2_next_std).detach()
 
         target_q1, target_q1_bound,r_soft_1, diff_1 = self.__compute_target_q(
             rew, done, q1.detach(),q1_std.detach(), q_next.detach(), q_next_sample.detach(), log_prob_act2.detach(),
@@ -255,21 +256,18 @@ class DSAC2W2MEANX(AlgorithmBase):
             rew, done, q2.detach(), q2_std.detach(),q_next.detach(), q_next_sample.detach(), log_prob_act2.detach(),
         )
 
-        weight = 0.5 * (torch.mean(torch.pow(q1_std.detach(), 2))
-                        + torch.mean(torch.pow(q2_std.detach(), 2)))
-
+        weight = 1.
         q1_loss = weight*torch.mean(
             torch.pow(q1 - target_q1, 2) / (2 * torch.pow(q1_std.detach(), 2))
-            +((torch.pow(q1.detach() - target_q1, 2)+(1-done)*(q1_next_std*self.gamma)**2+2*r_soft_1*diff_1) / (2 * torch.pow(q1_std, 2))
+            +((torch.pow(q1.detach() - target_q1_bound, 2)+(1-done)*(q_next_std*self.gamma)**2 )/ (2 * torch.pow(q1_std, 2))
             + torch.log(q1_std))
         )
 
 
 
-
         q2_loss = weight*torch.mean(
             torch.pow(q2 - target_q2, 2) / (2 * torch.pow(q2_std.detach(), 2))
-            + ((torch.pow(q2.detach() - target_q2, 2)+(1-done)*(q2_next_std*self.gamma)**2+2*r_soft_2*diff_2) / (2 * torch.pow(q2_std, 2))
+            + ((torch.pow(q2.detach() - target_q2_bound, 2)+(1-done)*(q_next_std*self.gamma)**2) / (2 * torch.pow(q2_std, 2))
             + torch.log(q2_std))
         )
 
@@ -280,8 +278,8 @@ class DSAC2W2MEANX(AlgorithmBase):
         r_soft = r - (1-done)*self.gamma*self.__get_alpha()*log_prob_a_next
         target_q = r_soft + (1 - done) * self.gamma * q_next
         target_q_sample = r_soft + (1 - done) * self.gamma * q_next_sample
-        td_bound = 3 * torch.mean(q_std)
-        difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
+        td_bound = 0.1*q_std
+        difference = torch.clamp(target_q - q, -td_bound, td_bound)
         target_q_bound = q + difference
         return target_q.detach(), target_q_bound.detach(), r_soft.detach(), difference.detach()
 

@@ -253,7 +253,7 @@ class ActionValueDistri(nn.Module):
     def forward(self, obs, act):
         logits = self.q(torch.cat([obs, act], dim=-1))
         value_mean, value_std = torch.chunk(logits, chunks=2, dim=-1)
-        value_log_std = torch.nn.functional.softplus(value_std) + 1e-4 # avoid 0
+        value_log_std = torch.nn.functional.softplus(value_std) + 1e-1 # avoid 0
         
         return torch.cat((value_mean, value_log_std), dim=-1)
 

@@ -14,7 +14,7 @@
 #  Update: 2021-03-05, Ziqing Gu: create DSAC algorithm
 #  Update: 2021-03-05, Wenxuan Wang: debug DSAC algorithm
 
-__all__=["ApproxContainer","DSAC22MEANT"]
+__all__=["ApproxContainer","DSAC22MEANX2"]
 import time
 from copy import deepcopy
 from typing import Tuple
@@ -74,7 +74,7 @@ class ApproxContainer(ApprBase):
         return self.policy.get_act_dist(logits)
 
 
-class DSAC22MEANT(AlgorithmBase):
+class DSAC22MEANX2(AlgorithmBase):
     """Modified DSAC algorithm
 
     Paper: https://arxiv.org/pdf/2001.02811
@@ -97,8 +97,7 @@ class DSAC22MEANT(AlgorithmBase):
         self.auto_alpha = kwargs["auto_alpha"]
         self.alpha = kwargs.get("alpha", 0.2)
         self.delay_update = kwargs["delay_update"]
-        self._td_bound = kwargs["TD_bound"]
-        self.tau_b = kwargs["tau_b"]
+        self.TD_bound = kwargs["TD_bound"]
 
     @property
     def adjustable_parameters(self):
@@ -107,6 +106,7 @@ class DSAC22MEANT(AlgorithmBase):
             "tau",
             "auto_alpha",
             "alpha",
+            "TD_bound"
             "delay_update",
         )
 
@@ -207,7 +207,6 @@ class DSAC22MEANT(AlgorithmBase):
             "DSAC2/policy_std-RL iter": policy_std,
             "DSAC2/entropy-RL iter": entropy.item(),
             "DSAC2/alpha-RL iter": self.__get_alpha(),
-            "DSAC2/TD_bound-RL iter": self._td_bound.item(),
             tb_tags["alg_time"]: (time.time() - start_time) * 1000,
         }
 
@@ -216,7 +215,7 @@ class DSAC22MEANT(AlgorithmBase):
     def __q_evaluate(self, obs, act, qnet):
         StochaQ = qnet(obs, act)
         mean, std = StochaQ[..., 0], StochaQ[..., -1]
-        # std = log_std.exp()
+        # std = std.exp()
         normal = Normal(torch.zeros_like(mean), torch.ones_like(std))
         z = normal.sample()
         z = torch.clamp(z, -3, 3)
@@ -236,12 +235,7 @@ class DSAC22MEANT(AlgorithmBase):
         act2, log_prob_act2 = act2_dist.rsample()
 
         q1, q1_std, _ = self.__q_evaluate(obs, act, self.networks.q1)
-        _, q1_std_target, _ = self.__q_evaluate(obs, act, self.networks.q1_target)
         q2, q2_std, _ = self.__q_evaluate(obs, act, self.networks.q2)
-        _, q2_std_target, _ = self.__q_evaluate(obs, act, self.networks.q2_target)
-        std_target=1/2 *(q1_std_target+q2_std_target)
-
-        self._td_bound = (1 - self.tau_b) * self._td_bound + self.tau_b * 3 * torch.mean(std_target)
 
         q1_next, _, q1_next_sample = self.__q_evaluate(
             obs2, act2, self.networks.q1_target
@@ -253,21 +247,21 @@ class DSAC22MEANT(AlgorithmBase):
         q_next = torch.min(q1_next, q2_next)
         q_next_sample = torch.where(q1_next < q2_next, q1_next_sample, q2_next_sample)
 
-        target_q1, target_q1_bound = self.__compute_target_q(
+        target_q1, target_q1_std = self.__compute_target_q(
             rew,
             done,
             q1.detach(),
-            q1_std_target.detach(),
+            q1_std.detach(),
             q_next.detach(),
             q_next_sample.detach(),
             log_prob_act2.detach(),
         )
         
-        target_q2, target_q2_bound = self.__compute_target_q(
+        target_q2, target_q2_std = self.__compute_target_q(
             rew,
             done,
             q2.detach(),
-            q2_std_target.detach(),
+            q2_std.detach(),
             q_next.detach(),
             q_next_sample.detach(),
             log_prob_act2.detach(),
@@ -276,18 +270,15 @@ class DSAC22MEANT(AlgorithmBase):
         weight = 1.0
 
         q1_loss = weight*torch.mean(
-            torch.pow(q1 - target_q1, 2) / (2 * torch.pow(q1_std.detach(), 2))
-            +(torch.pow(q1.detach() - target_q1_bound, 2) / (2 * torch.pow(q1_std, 2))
-            + torch.log(q1_std))
-        )
+            torch.pow(q1 - target_q1, 2)
+            + torch.pow(q1_std-target_q1_std, 2))
 
 
 
 
         q2_loss = weight*torch.mean(
-            torch.pow(q2 - target_q2, 2) / (2 * torch.pow(q2_std.detach(), 2))
-            + (torch.pow(q2.detach() - target_q2_bound, 2) / (2 * torch.pow(q2_std, 2))
-            + torch.log(q2_std))
+            torch.pow(q2 - target_q2, 2) 
+            + torch.pow(q2_std-target_q2_std, 2)
         )
 
 
@@ -297,14 +288,9 @@ class DSAC22MEANT(AlgorithmBase):
         target_q = r + (1 - done) * self.gamma * (
             q_next - self.__get_alpha() * log_prob_a_next
         )
-        target_q_sample = r + (1 - done) * self.gamma * (
-            q_next_sample - self.__get_alpha() * log_prob_a_next
-        )
-        # td_bound = 3 * torch.mean(q_std)
-        td_bound = self._td_bound
-        difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
-        target_q_bound = q + difference
-        return target_q.detach(), target_q_bound.detach()
+
+        target_q_std = (1 - done) * self.gamma * (q_std)
+        return target_q.detach(), target_q_std.detach()
 
     def __compute_loss_policy(self, data: DataDict):
         obs, new_act, new_log_prob = data["obs"], data["new_act"], data["new_log_prob"]

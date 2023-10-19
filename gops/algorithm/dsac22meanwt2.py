@@ -14,7 +14,7 @@
 #  Update: 2021-03-05, Ziqing Gu: create DSAC algorithm
 #  Update: 2021-03-05, Wenxuan Wang: debug DSAC algorithm
 
-__all__=["ApproxContainer","DSAC22MEANT"]
+__all__=["ApproxContainer","DSAC22MEANWT2"]
 import time
 from copy import deepcopy
 from typing import Tuple
@@ -74,7 +74,7 @@ class ApproxContainer(ApprBase):
         return self.policy.get_act_dist(logits)
 
 
-class DSAC22MEANT(AlgorithmBase):
+class DSAC22MEANWT2(AlgorithmBase):
     """Modified DSAC algorithm
 
     Paper: https://arxiv.org/pdf/2001.02811
@@ -99,6 +99,7 @@ class DSAC22MEANT(AlgorithmBase):
         self.delay_update = kwargs["delay_update"]
         self._td_bound = kwargs["TD_bound"]
         self.tau_b = kwargs["tau_b"]
+        self._mv_weight = 1.0
 
     @property
     def adjustable_parameters(self):
@@ -208,6 +209,7 @@ class DSAC22MEANT(AlgorithmBase):
             "DSAC2/entropy-RL iter": entropy.item(),
             "DSAC2/alpha-RL iter": self.__get_alpha(),
             "DSAC2/TD_bound-RL iter": self._td_bound.item(),
+            "DSAC2/MV_weight-RL iter": self._mv_weight.item(),
             tb_tags["alg_time"]: (time.time() - start_time) * 1000,
         }
 
@@ -273,9 +275,11 @@ class DSAC22MEANT(AlgorithmBase):
             log_prob_act2.detach(),
         )
 
-        weight = 1.0
+        weight = 0.5 * (torch.mean(torch.pow(q1_std.detach(), 2))
+                        + torch.mean(torch.pow(q2_std.detach(), 2)))
+        self._mv_weight = (1 - self.tau_b) * self._mv_weight + self.tau_b * weight
 
-        q1_loss = weight*torch.mean(
+        q1_loss = self._mv_weight*torch.mean(
             torch.pow(q1 - target_q1, 2) / (2 * torch.pow(q1_std.detach(), 2))
             +(torch.pow(q1.detach() - target_q1_bound, 2) / (2 * torch.pow(q1_std, 2))
             + torch.log(q1_std))
@@ -284,7 +288,7 @@ class DSAC22MEANT(AlgorithmBase):
 
 
 
-        q2_loss = weight*torch.mean(
+        q2_loss = self._mv_weight*torch.mean(
             torch.pow(q2 - target_q2, 2) / (2 * torch.pow(q2_std.detach(), 2))
             + (torch.pow(q2.detach() - target_q2_bound, 2) / (2 * torch.pow(q2_std, 2))
             + torch.log(q2_std))
@@ -301,7 +305,7 @@ class DSAC22MEANT(AlgorithmBase):
             q_next_sample - self.__get_alpha() * log_prob_a_next
         )
         # td_bound = 3 * torch.mean(q_std)
-        td_bound = self._td_bound
+        td_bound = 3*self._mv_weight**0.5
         difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
         target_q_bound = q + difference
         return target_q.detach(), target_q_bound.detach()

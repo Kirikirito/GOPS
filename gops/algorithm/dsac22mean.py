@@ -38,7 +38,7 @@ class ApproxContainer(ApprBase):
     """
 
     def __init__(self, **kwargs):
-        kwargs = super().__init__(**kwargs)
+        super().__init__(**kwargs)
         # create q networks
         q_args = get_apprfunc_dict("value", kwargs["value_func_type"], **kwargs)
         self.q1: nn.Module = create_apprfunc(**q_args)
@@ -214,8 +214,8 @@ class DSAC22MEAN(AlgorithmBase):
 
     def __q_evaluate(self, obs, act, qnet):
         StochaQ = qnet(obs, act)
-        mean, log_std = StochaQ[..., 0], StochaQ[..., -1]
-        std = log_std.exp()
+        mean, std = StochaQ[..., 0], StochaQ[..., -1]
+        # std = log_std.exp()
         normal = Normal(torch.zeros_like(mean), torch.ones_like(std))
         z = normal.sample()
         z = torch.clamp(z, -3, 3)
