@@ -92,21 +92,21 @@ script_path = os.path.join(base_path, 'example_train')
 save_path =  os.path.join(base_path, 'results')
 
 # Experiment parameters
-max_subprocess = 10
+max_subprocess = 1
 max_waiting_time = 48*3600 # seconds
 script_floder = 'dsac2'
-algs = ['dsac22meannt']
+algs = ['dsac22meanc']
 apprfuncs = ['mlp']
 envs = ['mujoco']
 repeats_num = 1
 
-suffix = 'main_exp_newmlp_nomv_1013'
+suffix = 'main_exp_newmlp_clip_1021'
 run_config={
-'env_id': ['gym_halfcheetah','gym_ant',],
+'env_id': ['gym_walker2d'],
 #'env_id': ['gym_humanoid','gym_walker2d','gym_halfcheetah','gym_ant','gym_inverteddoublependulum'],
 #'env_id': ['gym_humanoid'],
 'reward_scale': [1.0],
-'seed':[12345,22345,32345,42345,52345],
+'seed':[32345],
 }
 
 log_level = logging.DEBUG
