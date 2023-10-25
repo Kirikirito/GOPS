@@ -13,14 +13,20 @@
 from gops.sys_simulator.sys_run import PolicyRunner
 
 runner = PolicyRunner(
-    log_policy_dir_list=["../results/DSAC/idpendulum",
-                         "../results/SAC/idpendulum"],
-    trained_policy_iteration_list=["33500_opt",
-                                   "34500_opt"],
-    is_init_info=True,
+    log_policy_dir_list=[
+                        #"/home/wangwenxuan/gops_idp/gops/results/mujoco/sac_mlp/gym_ant_1.0_32345_test_0827_run0",
+                        #"/home/wangwenxuan/gops_idp/gops/results/mujoco/sac_mlp/gym_humanoid_1.0_22345_test_0827_run0",
+                          "/home/wangwenxuan/gops_idp/gops/results/mujoco/sac_mlp/gym_walker2d_1.0_32345_test_0827_run0"
+                         ],
+    trained_policy_iteration_list=[
+    # "1490000_opt",
+    #"1425000_opt",
+     "1497500_opt"
+        ],
+    is_init_info=False,
     init_info={"init_state": [-1, 0.05, 0.05, 0, 0.1, 0.1]},
-    save_render=False,
-    legend_list=["DSAC", "SAC"],
+    save_render=True,
+    legend_list=["SAC"],
     use_opt=False,  # Use optimal solution for comparison
     dt=0.01, # time interval between steps
 )
