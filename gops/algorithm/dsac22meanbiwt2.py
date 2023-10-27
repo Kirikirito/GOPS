@@ -98,7 +98,7 @@ class DSAC22MEANWT2(AlgorithmBase):
         self.alpha = kwargs.get("alpha", 0.2)
         self.delay_update = kwargs["delay_update"]
         self._td_bound = kwargs["TD_bound"]
-        self.tau_b = kwargs["tau_b"]
+        self.tau_b = kwargs.get("tau_b", self.tau)
         self._mv_weight = 1.0
 
     @property
@@ -174,7 +174,7 @@ class DSAC22MEANWT2(AlgorithmBase):
 
         self.networks.q1_optimizer.zero_grad()
         self.networks.q2_optimizer.zero_grad()
-        loss_q, q1, q2, std1, std2 = self.__compute_loss_q(data)
+        loss_q, q1, q2, std1, std2, min_std1, min_std2 = self.__compute_loss_q(data)
         loss_q.backward()
 
         for p in self.networks.q1.parameters():
@@ -202,6 +202,8 @@ class DSAC22MEANWT2(AlgorithmBase):
             "DSAC2/critic_avg_q2-RL iter": q2.item(),
             "DSAC2/critic_avg_std1-RL iter": std1.item(),
             "DSAC2/critic_avg_std2-RL iter": std2.item(),
+            "DSAC2/critic_avg_min_std1-RL iter": min_std1.item(),
+            "DSAC2/critic_avg_min_std2-RL iter": min_std2.item(),
             tb_tags["loss_actor"]: loss_policy.item(),
             tb_tags["loss_critic"]: loss_q.item(),
             "DSAC2/policy_mean-RL iter": policy_mean,

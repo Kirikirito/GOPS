@@ -14,7 +14,7 @@
 #  Update: 2021-03-05, Ziqing Gu: create DSAC algorithm
 #  Update: 2021-03-05, Wenxuan Wang: debug DSAC algorithm
 
-__all__=["ApproxContainer","DSAC22MEANWT2"]
+__all__=["ApproxContainer","DSAC22MEANBIWT"]
 import time
 from copy import deepcopy
 from typing import Tuple
@@ -74,7 +74,7 @@ class ApproxContainer(ApprBase):
         return self.policy.get_act_dist(logits)
 
 
-class DSAC22MEANWT2(AlgorithmBase):
+class DSAC22MEANBIWT(AlgorithmBase):
     """Modified DSAC algorithm
 
     Paper: https://arxiv.org/pdf/2001.02811
@@ -98,7 +98,7 @@ class DSAC22MEANWT2(AlgorithmBase):
         self.alpha = kwargs.get("alpha", 0.2)
         self.delay_update = kwargs["delay_update"]
         self._td_bound = kwargs["TD_bound"]
-        self.tau_b = kwargs["tau_b"]
+        self.tau_b = kwargs.get("tau_b", self.tau)
         self._mv_weight = 1.0
 
     @property
@@ -174,7 +174,7 @@ class DSAC22MEANWT2(AlgorithmBase):
 
         self.networks.q1_optimizer.zero_grad()
         self.networks.q2_optimizer.zero_grad()
-        loss_q, q1, q2, std1, std2 = self.__compute_loss_q(data)
+        loss_q, q1, q2, std1, std2, min_std1, min_std2 = self.__compute_loss_q(data)
         loss_q.backward()
 
         for p in self.networks.q1.parameters():
@@ -202,6 +202,8 @@ class DSAC22MEANWT2(AlgorithmBase):
             "DSAC2/critic_avg_q2-RL iter": q2.item(),
             "DSAC2/critic_avg_std1-RL iter": std1.item(),
             "DSAC2/critic_avg_std2-RL iter": std2.item(),
+            "DSAC2/critic_avg_min_std1-RL iter": min_std1.item(),
+            "DSAC2/critic_avg_min_std2-RL iter": min_std2.item(),
             tb_tags["loss_actor"]: loss_policy.item(),
             tb_tags["loss_critic"]: loss_q.item(),
             "DSAC2/policy_mean-RL iter": policy_mean,
@@ -305,7 +307,7 @@ class DSAC22MEANWT2(AlgorithmBase):
             q_next_sample - self.__get_alpha() * log_prob_a_next
         )
         # td_bound = 3 * torch.mean(q_std)
-        td_bound = self._td_bound
+        td_bound = 3*self._mv_weight**0.5
         difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
         target_q_bound = q + difference
         return target_q.detach(), target_q_bound.detach()
