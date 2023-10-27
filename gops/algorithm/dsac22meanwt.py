@@ -1,4 +1,3 @@
-
 #  Copyright (c). All Rights Reserved.
 #  General Optimal control Problem Solver (GOPS)
 #  Intelligent Driving Lab (iDLab), Tsinghua University
@@ -306,7 +305,8 @@ class DSAC22MEANWT(AlgorithmBase):
             q_next_sample - self.__get_alpha() * log_prob_a_next
         )
         # td_bound = 3 * torch.mean(q_std)
-        td_bound = 3*self._mv_weight**0.5
+        td_bound = self._td_bound
+
         difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
         target_q_bound = q + difference
         return target_q.detach(), target_q_bound.detach()

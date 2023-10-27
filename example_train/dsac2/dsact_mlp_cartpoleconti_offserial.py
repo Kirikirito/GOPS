@@ -31,10 +31,10 @@ if __name__ == "__main__":
     ################################################
     # Key Parameters for users
     parser.add_argument("--env_id", type=str, default="gym_cartpoleconti", help="id of environment")
-    parser.add_argument("--algorithm", type=str, default="DSACSTDC", help="RL algorithm")
+    parser.add_argument("--algorithm", type=str, default="DSAC22MEANBIWT2", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=False, help="Enable CUDA")
     parser.add_argument("--seed", type=int, default=2807268183, help="random seed")
-    parser.add_argument("--save_folder", type=str, default="/home/wangwenxuan/gops_idp/gops/results/gym_cartpoleconti/STDC1e-4-Reward_0.1_softplus_std")
+    parser.add_argument("--save_folder", type=str, default="/home/wangwenxuan/gops_idp/gops/results/gym_cartpoleconti/BIWT2-Reward_0.1")
     parser.add_argument("--tau_b", type=float, default=0.001)
     ################################################
     # 1. Parameters for environment

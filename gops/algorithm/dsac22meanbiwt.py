@@ -281,23 +281,25 @@ class DSAC22MEANBIWT(AlgorithmBase):
                         + torch.mean(torch.pow(q2_std.detach(), 2)))
         self._mv_weight = (1 - self.tau_b) * self._mv_weight + self.tau_b * weight
 
+        q1_std_detach = torch.clamp(q1_std, min=0.).detach()
+        q2_std_detach = torch.clamp(q2_std, min=0.).detach()
+        bias = 0.01
+
+
         q1_loss = self._mv_weight*torch.mean(
-            torch.pow(q1 - target_q1, 2) / (2 * torch.pow(q1_std.detach(), 2))
-            +(torch.pow(q1.detach() - target_q1_bound, 2) / (2 * torch.pow(q1_std, 2))
-            + torch.log(q1_std))
+            -(target_q1 - q1).detach() / ( torch.pow(q1_std_detach, 2)+ bias)*q1
+            -((torch.pow(q1.detach() - target_q1_bound, 2)- q1_std_detach.pow(2) )/ (torch.pow(q1_std_detach, 3) +bias)
+            )*q1_std
         )
-
-
-
 
         q2_loss = self._mv_weight*torch.mean(
-            torch.pow(q2 - target_q2, 2) / (2 * torch.pow(q2_std.detach(), 2))
-            + (torch.pow(q2.detach() - target_q2_bound, 2) / (2 * torch.pow(q2_std, 2))
-            + torch.log(q2_std))
+            -(target_q2 - q2).detach() / ( torch.pow(q2_std_detach, 2)+ bias)*q2
+            -((torch.pow(q2.detach() - target_q2_bound, 2)- q2_std_detach.pow(2) )/ (torch.pow(q2_std_detach, 3) +bias)
+            )*q2_std
         )
 
 
-        return q1_loss +q2_loss, q1.detach().mean(), q2.detach().mean(), q1_std.detach().mean(), q2_std.detach().mean()
+        return q1_loss +q2_loss, q1.detach().mean(), q2.detach().mean(), q1_std.detach().mean(), q2_std.detach().mean(), q1_std.min().detach(), q2_std.min().detach()
 
     def __compute_target_q(self, r, done, q,q_std, q_next, q_next_sample, log_prob_a_next):
         target_q = r + (1 - done) * self.gamma * (
@@ -307,7 +309,7 @@ class DSAC22MEANBIWT(AlgorithmBase):
             q_next_sample - self.__get_alpha() * log_prob_a_next
         )
         # td_bound = 3 * torch.mean(q_std)
-        td_bound = 3*self._mv_weight**0.5
+        td_bound = self._td_bound
         difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
         target_q_bound = q + difference
         return target_q.detach(), target_q_bound.detach()
