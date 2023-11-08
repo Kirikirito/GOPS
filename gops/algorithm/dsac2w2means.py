@@ -265,7 +265,7 @@ class DSAC2W2MEANS(AlgorithmBase):
 
 
 
-        return q1_loss , q1.detach().mean(), q1_std.detach().mean()
+        return q1_loss, q1.detach().mean(), q1_std.detach().mean()
 
     def __compute_target_q(self, r, done, q,q_std, q_next, q_next_sample, log_prob_a_next):
         target_q = r + (1 - done) * self.gamma * (
