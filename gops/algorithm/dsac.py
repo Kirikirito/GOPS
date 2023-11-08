@@ -235,10 +235,12 @@ class DSAC(AlgorithmBase):
             log_prob_act2.detach(),
         )
         if self.bound:
+            q_std_detach = torch.clamp(q_std, min=0.).detach()
+            bias = 0.1
             q_loss = torch.mean(
-                torch.pow(q - target_q, 2) / (2 * torch.pow(q_std.detach(), 2))
-                + torch.pow(q.detach() - target_q_bound, 2) / (2 * torch.pow(q_std, 2))
-                + torch.log(q_std)
+                -(target_q - q).detach() / ( torch.pow(q_std_detach, 2)+ bias)*q
+                -((torch.pow(q.detach() - target_q_bound, 2)- q_std_detach.pow(2) )/ (torch.pow(q_std_detach, 3) +bias)
+                )*q_std
             )
         else:
             q_loss = -Normal(q, q_std).log_prob(target_q).mean()
