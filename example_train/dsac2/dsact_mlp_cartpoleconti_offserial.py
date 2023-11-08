@@ -31,14 +31,15 @@ if __name__ == "__main__":
     ################################################
     # Key Parameters for users
     parser.add_argument("--env_id", type=str, default="gym_cartpoleconti", help="id of environment")
-    parser.add_argument("--algorithm", type=str, default="DSAC22MEANBIWT2", help="RL algorithm")
+    parser.add_argument("--algorithm", type=str, default="DSACT", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=False, help="Enable CUDA")
     parser.add_argument("--seed", type=int, default=2807268183, help="random seed")
-    parser.add_argument("--save_folder", type=str, default="/home/wangwenxuan/gops_idp/gops/results/gym_cartpoleconti/BIWT2-Reward_0.1")
-    parser.add_argument("--tau_b", type=float, default=0.001)
+    parser.add_argument("--save_folder", type=str, default="/home/wangwenxuan/gops_idp/gops/results/gym_cartpoleconti/T-Reward_1000_tau_0.001")
+    parser.add_argument("--tau", type=float, default=0.001)
+    # parser.add_argument("--tau_b", type=float, default=0.0001)
     ################################################
     # 1. Parameters for environment
-    parser.add_argument("--reward_scale", type=float, default=0.1, help="reward scale factor")
+    parser.add_argument("--reward_scale", type=float, default=1000, help="reward scale factor")
     parser.add_argument("--action_type", type=str, default="continu", help="Options: continu/discret")
     parser.add_argument("--is_render", type=bool, default=False, help="Draw environment animation")
     parser.add_argument("--is_adversary", type=bool, default=False, help="Adversary training")
@@ -92,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument("--alpha_learning_rate", type=float, default=1e-3)
     # special parameter
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--tau", type=float, default=0.2)
+
     parser.add_argument("--alpha", type=float, default=0.2)
     parser.add_argument("--auto_alpha", type=bool, default=True)
     parser.add_argument("--delay_update", type=int, default=2)
@@ -108,7 +109,7 @@ if __name__ == "__main__":
         help="Options: on_serial_trainer, on_sync_trainer, off_serial_trainer, off_async_trainer",
     )
     # Maximum iteration number
-    parser.add_argument("--max_iteration", type=int, default=36400)
+    parser.add_argument("--max_iteration", type=int, default=364000)
     parser.add_argument(
         "--ini_network_dir",
         type=str,
