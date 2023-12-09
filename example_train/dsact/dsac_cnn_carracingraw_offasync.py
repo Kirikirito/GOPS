@@ -33,7 +33,7 @@ if __name__ == "__main__":
     ################################################
     # Key Parameters for users
     parser.add_argument("--env_id", type=str, default="gym_carracingraw", help="id of environment")
-    parser.add_argument("--algorithm", type=str, default="SAC", help="RL algorithm")
+    parser.add_argument("--algorithm", type=str, default="DSAC", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=True, help="Disable CUDA")
     parser.add_argument("--seed", default=12345, help="Enable CUDA")
     ################################################
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymnasium-style")
     parser.add_argument("--reward_scale", type=float, default=1, help="reward scale factor")
     parser.add_argument("--action_type", type=str, default="continu", help="Options: continu/discret")
-    parser.add_argument("--is_render", type=bool, default=False, help="DrawSAC environment animation")
+    parser.add_argument("--is_render", type=bool, default=False, help="Draw environment animation")
     parser.add_argument("--is_adversary", type=bool, default=False, help="Adversary training")
 
     ################################################
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--value_func_name",
         type=str,
-        default="ActionValue",
+        default="ActionValueDistri",
         help="Options: StateValue/ActionValue/ActionValueDis/ActionValueDistri",
     )
     parser.add_argument('--value_func_type', type=str, default='CNN')
@@ -85,7 +85,6 @@ if __name__ == "__main__":
     ################################################
     # 3. Parameters for RL algorithm
     parser.add_argument("--value_learning_rate", type=float, default=0.0001)
-    parser.add_argument("--q_learning_rate", type=float, default=0.0001)
     parser.add_argument("--policy_learning_rate", type=float, default=0.0001)
     # parser.add_argument("--policy_scheduler", type=json.loads, default={
     #     "name": "LinearLR",
