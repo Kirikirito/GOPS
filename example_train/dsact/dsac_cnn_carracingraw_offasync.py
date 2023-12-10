@@ -101,7 +101,7 @@ if __name__ == "__main__":
     parser.add_argument("--auto_alpha", type=bool, default=True)
     parser.add_argument("--alpha", type=bool, default=0.2)
     parser.add_argument("--delay_update", type=int, default=2)
-    parser.add_argument("--TD_bound", type=float, default=10)
+    parser.add_argument("--TD_bound", type=float, default=20)
     parser.add_argument("--bound", default=True)
 
     ################################################
