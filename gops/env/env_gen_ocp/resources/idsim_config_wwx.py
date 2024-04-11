@@ -14,9 +14,10 @@ env_config_param_base = {
     "num_scenarios": 28,
     "detect_range": 60,
     "choose_vehicle_retries": 10,
+    "choose_vehicle_step_time": 30,
     "scenario_root": MAP_ROOT_CROSSROAD,
     "scenario_selector": None,
-     "direction_selector": 's',
+     "direction_selector": None,
     "extra_sumo_args": ("--start", "--delay", "200"),
     "warmup_time": 50.0,
     "max_steps": 200,
@@ -88,7 +89,7 @@ env_config_param_base = {
 model_config_base = {
     "N": pre_horizon,
     "sur_obs_padding": "rule",
-    "add_boundary_obs": True,
+    "add_boundary_obs": False,
     "full_horizon_sur_obs": False,
     "ahead_lane_length_min": 6.0,
     "ahead_lane_length_max": 60.0,
@@ -160,10 +161,10 @@ model_config_crossroad = model_config_base
 env_config_param_multilane = {
     **env_config_param_base,
     "scenario_root": MAP_ROOT_MULTILANE,
-    "action_lower_bound": (-2.5 * delta_t, -0.065 * delta_t),
-    "action_upper_bound": (2.5 * delta_t, 0.065 * delta_t),
-    "real_action_lower_bound": (-3.0, -0.065),
-    "real_action_upper_bound": (0.8, 0.065),
+    "action_lower_bound": (-2.5 * delta_t, -0.15 * delta_t),
+    "action_upper_bound": (2.5 * delta_t, 0.15 * delta_t),
+    "real_action_lower_bound": (-3.0, -0.571),
+    "real_action_upper_bound": (0.8, 0.571),
     "use_random_acc": True,
     "random_acc_cooldown": (30, 50, 50), # cooldown for acceleration, deceleration and ref_v, respectively
     "random_acc_prob": (0.1, 0.1), # probability to accelerate and decelerate, respectively

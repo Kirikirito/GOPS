@@ -146,6 +146,15 @@ class idSimEnv(CrossRoad, Env):
         self._info = self._get_info(info)
         return self._get_obs(), self._info
     
+    def _fix_context(self, context):
+        ego_state = context.x.ego_state[0] # [6]: x, y, vx, vy, phi, r
+        ref_param = context.p.ref_param[0] # [R, 2N+1, 4] ref_x, ref_y, ref_phi, ref_v
+        ref_index = context.p.ref_index_param[0]
+        nominal_steer = self._get_nominal_steer_by_state(
+            ego_state, ref_param, ref_index)*180/np.pi
+        if abs(nominal_steer) > 10:
+            context.x.ego_state[0][5] = 0
+    
     # @cal_ave_exec_time(print_interval=1000)
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         obs, reward, terminated, truncated, info = super(idSimEnv, self).step(action)
