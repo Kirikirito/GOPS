@@ -14,8 +14,8 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_multilane_exp_0308_13' 
-exp_discription = 'based on exp DSACT_exp0221,mix_map, random ref_v, nominal acc(-2.5m/s^2, when close front car), lane info in sur punish, increase random dacc range(-2.5m/s^2,-0.5m/s^2), use actor to update pi, add small car in the front 10 scene, period:0.5->0.75, per_buffer alpha0.6, LRdecay, full scene evluation, max_step 200, enable slow reward, with opposite direct cars, random takeover acc and steer, fix rear veh punish threshold, random seed in vecenv,change nomimal acc reward design (6->4), increase random dacc time expand ref_v eange to (0-10), fix per buffer decrease dacc action rate, overspead punish, dynamic living reward, sifety margin 1, explore action noise std 0.1, stratified buffer, sceneraio based sapling, obs(8,2,4), buffer size 225000, new brake condition, cancel lat and heading punish when low ref_v braking (reserve ref_v punish), when emergency brake, cancel ref_v, sample ratio 5->4 add boundary obs, mlp_seperated, punish boundary 0'
+exp_name = 'idsim_multilane_exp_0328_2' 
+exp_discription = 'based on exp DSACT_exp0308_14, fix bug in attention, change some env reward design, new attention and env config, without obs info, use attn origin dimension pi right and stright (by a hacky way) direction only cross scene, steer punish 0.05, add turning mode( low tracking punish, as one enent) action bound 0.2->0.15, buffer size 400000'
 
 
 script_folder = "dsac"
@@ -27,7 +27,7 @@ surfix_filter = 'offserial.py'
 run_config = {
     # 'env_id': ['gym_carracingraw'],
     'seed':[12345],
-    'buffer_max_size':[225000],
+    'buffer_max_size':[400000],
     # 'eval_interval':[2000],
     # 'sample_batch_size':[10],
     # 'sample_interval':[1],

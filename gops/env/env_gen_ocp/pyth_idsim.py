@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Generic, Optional, Tuple, Union
 from typing_extensions import Self
 
 import gym
+import time
 import numpy as np
 import torch
 from gops.env.env_gen_ocp.pyth_base import (Context, ContextState, Env, State, stateType)
@@ -18,7 +19,24 @@ from idsim_model.multilane.context import MultiLaneContext
 from idsim_model.model_context import State as ModelState
 from idsim_model.params import ModelConfig
 
+def cal_ave_exec_time(print_interval=100):
+    def decorator(func):
+        total_time = 0
+        count = 0
 
+        def wrapper(*args, **kwargs):
+            nonlocal total_time, count
+            start_time = time.perf_counter()
+            result = func(*args, **kwargs)
+            end_time = time.perf_counter()
+            execution_time = end_time - start_time
+            total_time += execution_time
+            count += 1
+            if count % print_interval == 0:
+                print(f"Average execution time after {count} steps: {total_time / count:.9f} seconds")
+            return result
+        return wrapper
+    return decorator
 
 @dataclass
 class idSimContextState(ContextState[stateType], Generic[stateType]):
@@ -128,6 +146,7 @@ class idSimEnv(CrossRoad, Env):
         self._info = self._get_info(info)
         return self._get_obs(), self._info
     
+    # @cal_ave_exec_time(print_interval=1000)
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         obs, reward, terminated, truncated, info = super(idSimEnv, self).step(action)
 
@@ -180,7 +199,7 @@ class idSimEnv(CrossRoad, Env):
                 "dtype":np.float32
             }
         })
-        return info
+        return {}
     
     def _get_obs(self) -> np.ndarray:
         idsim_context = get_idsimcontext(
@@ -270,6 +289,9 @@ class idSimEnv(CrossRoad, Env):
         scenarios = scenario_list[idx% len(scenario_list)]
         self.env_config.scenario_selector = scenarios
         print(f"INFO: change current scenario to {scenarios}")
+        direction_list = ["r", "s"]
+        self.env_config.direction_selector = direction_list[idx % len(direction_list)] # FIXME: this is a hack
+        print(f"INFO: change current direction to {self.env_config.direction_selector}")
 
     def change_rou_file(self):
         surrounding_max_speed_range = self.rou_config["surrounding_max_speed_range"]

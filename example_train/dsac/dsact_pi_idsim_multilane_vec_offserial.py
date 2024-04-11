@@ -53,7 +53,7 @@ if __name__ == "__main__":
     base_env_model_config.update(extra_env_model_config)
     parser.add_argument("--env_config", type=dict, default=base_env_config)
     parser.add_argument("--env_model_config", type=dict, default=base_env_model_config)
-    parser.add_argument("--scenerios_list", type=list, default=[':19','19:'])
+    parser.add_argument("--scenerios_list", type=list, default=['19:','19:'])
 
     parser.add_argument("--vector_env_num", type=int, default=10, help="Number of vector envs")
     parser.add_argument("--vector_env_type", type=str, default='async', help="Options: sync/async")
@@ -136,6 +136,7 @@ if __name__ == "__main__":
     parser.add_argument("--pi_end", type=int, default=pi_paras["pi_end"])
     parser.add_argument("--enable_mask", type=bool, default=True)
     parser.add_argument("--obj_dim", type=int, default=pi_paras["obj_dim"])
+    parser.add_argument("--attn_dim", type=int, default=64)
     parser.add_argument("--pi_out_dim", type=int, default=pi_paras["output_dim"])
     parser.add_argument("--pi_hidden_sizes", type=list, default=[256,256,256])
     parser.add_argument("--pi_hidden_activation", type=str, default="gelu")
@@ -216,7 +217,7 @@ if __name__ == "__main__":
         "--buffer_name", type=str, default="prioritized_stratified_replay_buffer", help="Options:replay_buffer/prioritized_replay_buffer"
     )
     parser.add_argument(
-        "--category_num", type=int, default=5, help="Number of categories for stratified replay buffer")
+        "--category_num", type=int, default=6, help="Number of categories for stratified replay buffer")
     # Size of collected samples before training
     parser.add_argument("--buffer_warm_size", type=int, default=10000)
     # Max size of reply buffer
