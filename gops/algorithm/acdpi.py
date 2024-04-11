@@ -453,6 +453,25 @@ class ACDPI(AlgorithmBase):
             act2, log_prob_act2 = act2_dist.rsample()
 
 
+            pre_obs2 = self.networks.policy_target.pi_net(pre_obs2)
+
+            logits_mean, logits_std = torch.chunk(logits_2, chunks=2, dim=-1)
+            jacobi = vmap(jacrev(self.networks.policy_target))(obs2).detach()
+            norm = torch.norm(jacobi[:, : self.act_dim, :], 2, dim=(2)).detach()
+
+            k_out_target = self.networks.K_target(obs2)
+            k_value2, smooth_std2 = torch.chunk(k_out_target, chunks=2, dim=-1)
+
+            mean_lips = self.__smooth(obs, logits_mean, norm, k_value2)
+
+            action_std = torch.clamp(
+            smooth_std2, self.min_log_std, self.max_log_std ).exp()
+
+            logits_lips = torch.cat((mean_lips, action_std), dim=1)
+            act3_dist = self.networks.create_action_distributions(logits_lips)
+            act3, log_prob_act3 = act3_dist.rsample()
+
+
 
         q1, q1_std, _ = self.__q_evaluate(obs, act, self.networks.q1)
         q2, q2_std, _ = self.__q_evaluate(obs, act, self.networks.q2)
