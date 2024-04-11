@@ -330,7 +330,9 @@ class ACDPI(AlgorithmBase):
         self.networks.policy_optimizer.zero_grad()
         self.networks.K_optimizer.zero_grad()
         self.networks.pi_optimizer.zero_grad()
-        loss_q, loss_q_lips, q1, q2, q3, q4, std1, std2, std3, std4, min_std1, min_std2, min_std3, min_std4 = self.__compute_loss_q(data)
+        loss_q, loss_q_lips, q1, q2, q3, q4, std1, std2,std3, std4, min_std1, min_std2,  min_std3, min_std4, origin_q_loss,origin_q_loss_lips, idx, td_err,idx2, td_err2  = self.__compute_loss_q(data)
+        # loss_q.backward()
+        # loss_q, loss_q_lips, q1, q2, q3, q4, std1, std2, std3, std4, min_std1, min_std2, min_std3, min_std4 = self.__compute_loss_q(data)
         loss_q.backward()
         loss_q_lips.backward()
 
@@ -489,6 +491,19 @@ class ACDPI(AlgorithmBase):
         else:
             self.mean_std2 = (1 - self.tau_b) * self.mean_std2 + self.tau_b * torch.mean(q2_std.detach())
 
+
+        if self.mean_std3 is None:
+            self.mean_std3 = torch.mean(q3_std.detach())
+        else:
+            self.mean_std3 = (1 - self.tau_b) * self.mean_std3 + self.tau_b * torch.mean(q3_std.detach())
+
+        if self.mean_std4 is None:
+            self.mean_std4 = torch.mean(q4_std.detach())
+        else:
+            self.mean_std4 = (1 - self.tau_b) * self.mean_std4 + self.tau_b * torch.mean(q4_std.detach())
+
+
+
         with torch.no_grad():
             q1_next, _, q1_next_sample = self.__q_evaluate(
                 obs2, act2, self.networks.q1_target
@@ -499,6 +514,16 @@ class ACDPI(AlgorithmBase):
             )
             q_next = torch.min(q1_next, q2_next)
             q_next_sample = torch.where(q1_next < q2_next, q1_next_sample, q2_next_sample)
+
+            q3_next, _, q3_next_sample = self.__q_evaluate(
+                obs2, act3, self.networks.q3_target
+            )
+            
+            q4_next, _, q4_next_sample = self.__q_evaluate(
+                obs2, act3, self.networks.q4_target
+            )
+            q_next_lips = torch.min(q3_next, q4_next)
+            q_next_sample_lips = torch.where(q3_next < q4_next, q3_next_sample, q4_next_sample)
 
         target_q1, target_q1_bound = self.__compute_target_q(
             rew,
@@ -519,9 +544,31 @@ class ACDPI(AlgorithmBase):
             q_next_sample.detach(),
             log_prob_act2.detach(),
         )
+        target_q3, target_q3_bound = self.__compute_target_q_lips(
+            rew,
+            done,
+            q3.detach(),
+            self.mean_std3.detach(),
+            q_next_lips.detach(),
+            q_next_sample_lips.detach(),
+            log_prob_act3.detach(),
+        )
+
+        target_q4, target_q4_bound = self.__compute_target_q_lips(
+            rew,
+            done,
+            q4.detach(),
+            self.mean_std4.detach(),
+            q_next_lips.detach(),
+            q_next_sample_lips.detach(),
+            log_prob_act3.detach(),
+        )
+
 
         q1_std_detach = torch.clamp(q1_std, min=0.).detach()
         q2_std_detach = torch.clamp(q2_std, min=0.).detach()
+        q3_std_detach = torch.clamp(q3_std, min=0.).detach()
+        q4_std_detach = torch.clamp(q4_std, min=0.).detach()
         bias = 0.1
 
         q1_loss = (torch.pow(self.mean_std1, 2) + bias) * torch.mean(weight*(
@@ -535,6 +582,23 @@ class ACDPI(AlgorithmBase):
             -((torch.pow(q2.detach() - target_q2_bound, 2)- q2_std_detach.pow(2) )/ (torch.pow(q2_std_detach, 3) +bias)
             )*q2_std)
         )
+
+        q3_loss = (torch.pow(self.mean_std3, 2) + bias) * torch.mean(
+            -(target_q3 - q3).detach() / (torch.pow(q3_std_detach, 2) + bias) * q3
+            - ((torch.pow(q3.detach() - target_q3_bound, 2) - q3_std_detach.pow(2)) / (
+                        torch.pow(q3_std_detach, 3) + bias)
+               ) * q3_std
+        )
+
+        q4_loss = (torch.pow(self.mean_std4, 2) + bias) * torch.mean(
+            -(target_q4 - q4).detach() / (torch.pow(q4_std_detach, 2) + bias) * q4
+            - ((torch.pow(q4.detach() - target_q4_bound, 2) - q4_std_detach.pow(2)) / (
+                        torch.pow(q4_std_detach, 3) + bias)
+               ) * q4_std
+        )
+
+
+
         with torch.no_grad():
             origin_q1_loss = (torch.pow(self.mean_std1, 2)) * torch.mean(
                 torch.pow((target_q1 - q1),2) / ( torch.pow(q1_std_detach, 2)+ 1e-6)  
@@ -543,6 +607,14 @@ class ACDPI(AlgorithmBase):
                 torch.pow((target_q2 - q2),2) / ( torch.pow(q2_std_detach, 2)+ 1e-6)  
                 + torch.log(q2_std_detach+1e-6))
             origin_q_loss = origin_q1_loss + origin_q2_loss
+
+            origin_q3_loss = (torch.pow(self.mean_std3, 2)) * torch.mean(
+                torch.pow((target_q3 - q3),2) / ( torch.pow(q3_std_detach, 2)+ 1e-6)  
+                + torch.log(q3_std_detach+1e-6)) # for numerical stability
+            origin_q4_loss = (torch.pow(self.mean_std4, 2)) * torch.mean(
+                torch.pow((target_q4 - q4),2) / ( torch.pow(q4_std_detach, 2)+ 1e-6)  
+                + torch.log(q4_std_detach+1e-6))
+            origin_q_loss_lips = origin_q3_loss + origin_q4_loss
         
 
         if self.per_flag:
@@ -555,7 +627,17 @@ class ACDPI(AlgorithmBase):
             idx = None
             per = None
 
-        return q1_loss +q2_loss, q1.detach().mean(), q2.detach().mean(), q1_std.detach().mean(), q2_std.detach().mean(), q1_std.min().detach(), q2_std.min().detach(), origin_q_loss.detach(), idx, per
+        if self.per_flag:
+            idx2 = data["idx"]
+            td_err2 = (torch.abs(target_q3 - q3) + torch.abs(target_q4 - q4)) / 2
+            # print("td_err_max", td_err.max().item())
+            # print("td_err_min", td_err.min().item())
+            per2 = td_err2/2000 # TODO: 2000 is a hyperparameter
+        else:
+            idx2 = None
+            per2 = None
+
+        return q1_loss +q2_loss,q3_loss +q4_loss, q1.detach().mean(), q2.detach().mean(), q3.detach().mean(), q4.detach().mean(),q1_std.detach().mean(), q2_std.detach().mean(),q3_std.detach().mean(), q4_std.detach().mean(), q1_std.min().detach(), q2_std.min().detach(),q3_std.min().detach(), q4_std.min().detach(), origin_q_loss.detach(), origin_q_loss_lips.detach(),idx, per,idx2, per2
 
     def __compute_target_q(self, r, done, q,q_std, q_next, q_next_sample, log_prob_a_next):
         target_q = r + (1 - done) * self.gamma * (
@@ -568,6 +650,25 @@ class ACDPI(AlgorithmBase):
         difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
         target_q_bound = q + difference
         return target_q.detach(), target_q_bound.detach()
+    
+    def __compute_target_q_lips(self, r, done, q, q_std, q_next, q_next_sample, log_prob_a_next):
+        target_q = r + (1 - done) * self.gamma * (
+                q_next - self.__get_alpha2() * log_prob_a_next
+        )
+        target_q_sample = r + (1 - done) * self.gamma * (
+                q_next_sample - self.__get_alpha2() * log_prob_a_next
+        )
+        td_bound = 3 * q_std
+        difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
+        target_q_bound = q + difference
+        return target_q.detach(), target_q_bound.detach()
+    
+    def __forward_K(self, obs):
+        k_out = self.networks.K(obs)
+        k_value, logits_std = torch.chunk(k_out, chunks=2, dim=-1)
+        lips_loss = torch.sum((k_value** 2), dim=-1).mean()
+        return lips_loss
+
 
     def __compute_loss_policy(self, data: DataDict):
         obs, new_act, new_log_prob = data["obs"], data["new_act"], data["new_log_prob"]
@@ -576,6 +677,16 @@ class ACDPI(AlgorithmBase):
         loss_policy = (self.__get_alpha() * new_log_prob - torch.min(q1,q2)).mean()
         entropy = -new_log_prob.detach().mean()
         return loss_policy, entropy
+    
+    def __compute_loss_K(self, data: DataDict):
+        obs, new_act_lips, new_log_prob_lips = data["obs"], data["new_act_lips"], data["new_log_prob_lips"]#,data["new_lambda"]
+        pre_obs = self.networks.policy.pi_net(obs)
+        lips_loss = self.__forward_K(pre_obs)
+        q3, _, _ = self.__q_evaluate(obs, new_act_lips, self.networks.q3)
+        q4, _, _ = self.__q_evaluate(obs, new_act_lips, self.networks.q4)
+        loss_K = (self.__get_alpha2() * new_log_prob_lips  -torch.min(q3, q4)).mean() + self.loss_lambda_new * lips_loss
+        entropy = -new_log_prob_lips.detach().mean()
+        return loss_K ,entropy
 
     def __compute_loss_alpha(self, data: DataDict):
         new_log_prob = data["new_log_prob"]
@@ -585,16 +696,30 @@ class ACDPI(AlgorithmBase):
         )
         return loss_alpha
 
+    def __compute_loss_alpha2(self, data: DataDict):
+        new_log_prob = data["new_log_prob_lips"]
+        loss_alpha2 = (
+                -self.networks.log_alpha2
+                * (new_log_prob.detach() + self.target_entropy).mean()
+        )
+        return loss_alpha2
+
+
+
     def __update(self, iteration: int):
         self.networks.q1_optimizer.step()
         self.networks.q2_optimizer.step()
+        self.networks.q3_optimizer.step()
+        self.networks.q4_optimizer.step()
         self.networks.pi_optimizer.step()
 
         if iteration % self.delay_update == 0:
             self.networks.policy_optimizer.step()
+            self.networks.K_optimizer.step()
 
             if self.auto_alpha:
                 self.networks.alpha_optimizer.step()
+                self.networks.alpha2_optimizer.step()
 
             with torch.no_grad():
                 polyak = 1 - self.tau
@@ -608,9 +733,29 @@ class ACDPI(AlgorithmBase):
                 ):
                     p_targ.data.mul_(polyak)
                     p_targ.data.add_((1 - polyak) * p.data)
+
+                for p, p_targ in zip(
+                    self.networks.q3.ego_paras(), self.networks.q3_target.ego_paras()
+                ):
+                    p_targ.data.mul_(polyak)
+                    p_targ.data.add_((1 - polyak) * p.data)
+                for p, p_targ in zip(
+                    self.networks.q4.ego_paras(), self.networks.q4_target.ego_paras()
+                ):
+                    p_targ.data.mul_(polyak)
+                    p_targ.data.add_((1 - polyak) * p.data)
+
+
                 for p, p_targ in zip(
                     self.networks.policy.ego_paras(),
                     self.networks.policy_target.ego_paras(),
+                ):
+                    p_targ.data.mul_(polyak)
+                    p_targ.data.add_((1 - polyak) * p.data)
+
+                for p, p_targ in zip(
+                    self.networks.K.parameters(),
+                    self.networks.K_target.parameters(),
                 ):
                     p_targ.data.mul_(polyak)
                     p_targ.data.add_((1 - polyak) * p.data)
