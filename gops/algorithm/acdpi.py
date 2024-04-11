@@ -456,13 +456,13 @@ class ACDPI(AlgorithmBase):
             pre_obs2 = self.networks.policy_target.pi_net(pre_obs2)
 
             logits_mean, logits_std = torch.chunk(logits_2, chunks=2, dim=-1)
-            jacobi = vmap(jacrev(self.networks.policy_target))(obs2).detach()
+            jacobi = vmap(jacrev(self.networks.policy_target.policy))(pre_obs2).detach()
             norm = torch.norm(jacobi[:, : self.act_dim, :], 2, dim=(2)).detach()
 
-            k_out_target = self.networks.K_target(obs2)
+            k_out_target = self.networks.K_target(pre_obs2)
             k_value2, smooth_std2 = torch.chunk(k_out_target, chunks=2, dim=-1)
 
-            mean_lips = self.__smooth(obs, logits_mean, norm, k_value2)
+            mean_lips = self.__smooth(logits_mean, norm, k_value2)
 
             action_std = torch.clamp(
             smooth_std2, self.min_log_std, self.max_log_std ).exp()
