@@ -23,6 +23,7 @@ from gops.env.vector.vector_env import VectorEnv
 from gops.utils.common_utils import set_seed
 from gops.utils.explore_noise import GaussNoise, EpsilonGreedy
 from gops.utils.tensorboard_setup import tb_tags
+from functorch import jacrev, vmap
 
 
 class Experience(NamedTuple):
@@ -50,6 +51,18 @@ class BaseSampler(metaclass=ABCMeta):
         self.networks.eval()
         self.noise_params = noise_params
         self.sample_batch_size = sample_batch_size
+
+        self.algorithm = kwargs["algorithm"]
+        self.sample_step = 0
+        self.act_dim = kwargs["action_dim"]
+        if self.algorithm =="ACDPI":
+           self.eps = kwargs["policy_eps"]
+           self.min_log_std = kwargs["policy_min_log_std"]
+           self.max_log_std = kwargs["policy_max_log_std"]
+
+
+
+
         if isinstance(self.env, VectorEnv):
             self._is_vector = True
             self.num_envs = self.env.num_envs
@@ -98,6 +111,25 @@ class BaseSampler(metaclass=ABCMeta):
 
     def get_total_sample_number(self) -> int:
         return self.total_sample_number
+
+    def smooth(self, batch_obs,pre_obs):
+        k_out =self.networks.K(pre_obs)
+        k_value, logits_std = torch.chunk(k_out, chunks=2, dim=-1)
+
+        logits_std = torch.clamp(
+            logits_std, self.min_log_std, self.max_log_std
+        ).exp()
+
+        f_out = self.networks.policy(batch_obs)
+
+        logits_mean, _ = torch.chunk(f_out, chunks=2, dim=-1)
+        jacobi = vmap(jacrev(self.networks.policy.policy))(pre_obs)
+        norm = torch.norm(jacobi[:, : self.act_dim, :], 2, dim=(2))
+        mean_lips = k_value * logits_mean / (norm + self.eps)
+
+        logits_lips = torch.cat((mean_lips, logits_std), dim=1)
+        return logits_lips
+
     
     def _step(self) -> List[Experience]:
         # take action using behavior policy
@@ -107,9 +139,21 @@ class BaseSampler(metaclass=ABCMeta):
             )
         else:
             batch_obs = torch.from_numpy(self.obs.astype("float32"))
-        logits = self.networks.policy(batch_obs)
-        action_distribution = self.networks.create_action_distributions(logits)
-        action, logp = action_distribution.sample()
+
+        if self.algorithm =="ACDPI":
+            if self.sample_step % 2 == 0:
+                pre_obs = self.networks.policy.pi_net(batch_obs)
+                logits_lips = self.smooth(batch_obs,pre_obs)
+                action_distribution = self.networks.create_action_distributions(logits_lips)
+                action, logp = action_distribution.sample()
+            else:
+                logits = self.networks.policy(batch_obs)
+                action_distribution = self.networks.create_action_distributions(logits)
+                action, logp = action_distribution.sample()
+        else:
+            logits = self.networks.policy(batch_obs)
+            action_distribution = self.networks.create_action_distributions(logits)
+            action, logp = action_distribution.sample()
 
         if self._is_vector:
             action = action.detach().numpy()

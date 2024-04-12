@@ -165,4 +165,6 @@ tb_tags = {
     "sampler_time": "Time/Sampler time [ms]-RL iter",
     "critic_avg_value": "Train/Critic avg value-RL iter",
     "lips_value": "Lipschitz/Lipschitz value - RL iter",
+    "Lipschitz of RL iteration": "Lips/Lipschitz of RL iteration",
+    "Lipschitz2 of RL iteration": "Lips/Lipschitz2 of RL iteration",
 }

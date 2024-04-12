@@ -57,6 +57,13 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
         self.best_tar = -inf
         self.save_folder = kwargs["save_folder"]
         self.iteration = 0
+        self.algorithm = kwargs["algorithm"]
+        # self.is_ACD = kwargs["algorithm"] is "ACD"
+        if self.algorithm == "ACDPI":
+            self.new_lambda = kwargs["policy_lambda"]
+        else:
+            self.new_lambda = 0
+        self.mean_mul = 0
 
         self.writer = SummaryWriter(log_dir=self.save_folder, flush_secs=20)
         # flush tensorboard at the beginning
@@ -133,6 +140,20 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
         if self.iteration % self.apprfunc_save_interval == 0:
             self.save_apprfunc()
 
+
+        if self.algorithm == "ACDPI:
+            zero_intput = torch.zeros((1, self.sampler.obs.shape[0]))
+            if self.use_gpu:
+                zero_intput = zero_intput.cuda()
+            self.writer.add_scalar(
+                tb_tags["Lipschitz of RL iteration"], self.networks.K(zero_intput)[0][0].squeeze(0),
+                self.iteration
+            )
+            # self.writer.add_scalar(
+            #     tb_tags["Lipschitz2 of RL iteration"], self.networks.K(zero_intput)[0][1].squeeze(0),
+            #     self.iteration)
+            self.alg.lambda_update(self.new_lambda,self.mean_mul)
+
         # evaluate
         if self.iteration - self.last_eval_iteration >= self.eval_interval:
             if self.evluate_tasks.count == 0:
@@ -140,10 +161,17 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
                 self._add_eval_task()
             elif self.evluate_tasks.completed_num == 1:
                 # Evaluation tasks is completed, log data and add another one.
-                objID = next(self.evluate_tasks.completed())[1]
-                avg_tb_eval_dict = ray.get(objID)
-                total_avg_return = avg_tb_eval_dict['total_avg_return']
-                self._add_eval_task()
+                if self.algorithm == "ACDPI:
+                    objID = next(self.evluate_tasks.completed())[1]
+                    avg_tb_eval_dict,self.new_lambda, self.mean_mul = ray.get(objID)
+                    total_avg_return = avg_tb_eval_dict['total_avg_return']
+                    self._add_eval_task()
+                else:
+                    objID = next(self.evluate_tasks.completed())[1]
+                    avg_tb_eval_dict = ray.get(objID)
+                    total_avg_return = avg_tb_eval_dict['total_avg_return']
+                    self._add_eval_task()
+
 
                 if (
                     total_avg_return >= self.best_tar
@@ -206,8 +234,15 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
     def _add_eval_task(self):
         with ModuleOnDevice(self.networks, "cpu"):
             self.evaluator.load_state_dict.remote(self.networks.state_dict())
-        self.evluate_tasks.add(
-            self.evaluator,
-            self.evaluator.run_evaluation.remote(self.iteration)
-        )
+        
+        if self.algorithm == "ACDPI:
+            self.evluate_tasks.add(
+                self.evaluator,
+                self.evaluator.run_evaluation.remote(self.iteration)
+            )
+        else:
+            self.evluate_tasks.add(
+                self.evaluator,
+                self.evaluator.run_evaluation.remote(self.iteration)
+            )
         self.last_eval_iteration = self.iteration
