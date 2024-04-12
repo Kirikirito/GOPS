@@ -141,7 +141,7 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
             self.save_apprfunc()
 
 
-        if self.algorithm == "ACDPI:
+        if self.algorithm == "ACDPI":
             zero_intput = torch.zeros((1, self.sampler.obs.shape[0]))
             if self.use_gpu:
                 zero_intput = zero_intput.cuda()
@@ -161,7 +161,7 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
                 self._add_eval_task()
             elif self.evluate_tasks.completed_num == 1:
                 # Evaluation tasks is completed, log data and add another one.
-                if self.algorithm == "ACDPI:
+                if self.algorithm == "ACDPI":
                     objID = next(self.evluate_tasks.completed())[1]
                     avg_tb_eval_dict,self.new_lambda, self.mean_mul = ray.get(objID)
                     total_avg_return = avg_tb_eval_dict['total_avg_return']
@@ -235,7 +235,7 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
         with ModuleOnDevice(self.networks, "cpu"):
             self.evaluator.load_state_dict.remote(self.networks.state_dict())
         
-        if self.algorithm == "ACDPI:
+        if self.algorithm == "ACDPI":
             self.evluate_tasks.add(
                 self.evaluator,
                 self.evaluator.run_evaluation.remote(self.iteration)
