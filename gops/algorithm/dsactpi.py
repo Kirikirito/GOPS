@@ -130,6 +130,8 @@ class DSACTPI(AlgorithmBase):
         self.target_PI = kwargs["target_PI"]
         self.per_flag = kwargs["buffer_name"].startswith("prioritized") # FIXME: hard code
 
+        print(self.networks.policy)
+
     @property
     def adjustable_parameters(self):
         return (
@@ -386,7 +388,7 @@ class DSACTPI(AlgorithmBase):
         q1, _, _ = self.__q_evaluate(obs, new_act, self.networks.q1)
         q2, _, _ = self.__q_evaluate(obs, new_act, self.networks.q2)
         loss_policy = (self.__get_alpha() * new_log_prob - torch.min(q1,q2)).mean()
-        entropy = -new_log_prob.detach().mean()
+        entropy = - new_log_prob.detach().mean()
         return loss_policy, entropy
 
     def __compute_loss_alpha(self, data: DataDict):

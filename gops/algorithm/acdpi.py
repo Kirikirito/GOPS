@@ -185,6 +185,8 @@ class ACDPI(AlgorithmBase):
         self.mean_mul = 0
         self.loss_lambda_new = self.loss_lambda
 
+        print(self.networks.policy)
+
     @property
     def adjustable_parameters(self):
         return (
@@ -326,7 +328,7 @@ class ACDPI(AlgorithmBase):
         self.networks.q1_optimizer.zero_grad()
         self.networks.q2_optimizer.zero_grad()
         self.networks.q3_optimizer.zero_grad()
-        self.networks.q24_optimizer.zero_grad()
+        self.networks.q4_optimizer.zero_grad()
         self.networks.policy_optimizer.zero_grad()
         self.networks.K_optimizer.zero_grad()
         self.networks.pi_optimizer.zero_grad()
@@ -454,8 +456,7 @@ class ACDPI(AlgorithmBase):
             act2_dist = self.networks.create_action_distributions(logits_2)
             act2, log_prob_act2 = act2_dist.rsample()
 
-
-            pre_obs2 = self.networks.policy_target.pi_net(pre_obs2)
+            pre_obs2 = self.networks.policy_target.pi_net(obs2)
 
             logits_mean, logits_std = torch.chunk(logits_2, chunks=2, dim=-1)
             jacobi = vmap(jacrev(self.networks.policy_target.policy))(pre_obs2).detach()
@@ -786,7 +787,9 @@ class Lips_K(nn.Module, Action_Distribution):
 
         loss_lambda = kwargs["policy_lambda"]
         assert loss_lambda is not None
-        sizes = [obs_dim] + list(hidden_sizes) + [act_dim]
+        sizes = [obs_dim + 1] + list(hidden_sizes) + [act_dim]
+
+        #print("sizesssssssssssss",sizes)
 
         k_start = lips_init_value * act_dim
         std_start = [0] * act_dim
@@ -815,6 +818,7 @@ class Lips_K(nn.Module, Action_Distribution):
             self.K = torch.nn.Parameter(torch.tensor(Lips_start, dtype=torch.float), requires_grad=True)
 
     def forward(self, x):
+        #print("x",x.shape)
         if self.local:
             out = self.K(x)
             out = torch.cat([F.softplus(out[:, :out.size(1) // 2]), out[:, out.size(1) // 2:]], dim=1)

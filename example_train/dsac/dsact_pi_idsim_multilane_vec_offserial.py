@@ -93,7 +93,7 @@ if __name__ == "__main__":
         "--value_func_name",
         type=str,
         default="ActionValueDistri",
-        help="Options: StateValue/ActionValue/ActionValueDis/ActionValueDistri",python 
+        help="Options: StateValue/ActionValue/ActionValueDis/ActionValueDistri",
     )
     parser.add_argument("--value_func_type", type=str, default="PINet", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
     parser.add_argument("--value_hidden_sizes", type=list, default=[256, 256,256])

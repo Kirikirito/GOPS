@@ -145,13 +145,15 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
             zero_intput = torch.zeros((1, self.sampler.obs.shape[0]))
             if self.use_gpu:
                 zero_intput = zero_intput.cuda()
-            self.writer.add_scalar(
-                tb_tags["Lipschitz of RL iteration"], self.networks.K(zero_intput)[0][0].squeeze(0),
-                self.iteration
-            )
-            # self.writer.add_scalar(
-            #     tb_tags["Lipschitz2 of RL iteration"], self.networks.K(zero_intput)[0][1].squeeze(0),
-            #     self.iteration)
+            #pre_obs= self.networks.policy.pi_net(zero_intput)
+            #self.writer.add_scalar(
+
+            #    tb_tags["Lipschitz of RL iteration"], self.networks.K(pre_obs)[0][0].squeeze(0),
+            #    self.iteration
+            #)
+            #self.writer.add_scalar(
+            #     tb_tags["Lipschitz2 of RL iteration"], self.networks.K(pre_obs)[0][1].squeeze(0),
+            #    self.iteration)
             self.alg.lambda_update(self.new_lambda,self.mean_mul)
 
         # evaluate

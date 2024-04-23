@@ -113,6 +113,7 @@ class BaseSampler(metaclass=ABCMeta):
         return self.total_sample_number
 
     def smooth(self, batch_obs,pre_obs):
+        #print("pre_obs",pre_obs.shape)
         k_out =self.networks.K(pre_obs)
         k_value, logits_std = torch.chunk(k_out, chunks=2, dim=-1)
 
@@ -142,15 +143,22 @@ class BaseSampler(metaclass=ABCMeta):
 
         if self.algorithm =="ACDPI":
             if self.sample_step % 2 == 0:
+               # print("original:",batch_obs.shape)
                 pre_obs = self.networks.policy.pi_net(batch_obs)
                 logits_lips = self.smooth(batch_obs,pre_obs)
                 action_distribution = self.networks.create_action_distributions(logits_lips)
                 action, logp = action_distribution.sample()
             else:
+              #  print("original:",batch_obs.shape)
+                pre_obs = self.networks.policy.pi_net(batch_obs)
+              #  print("pre_obs:",pre_obs.shape)
                 logits = self.networks.policy(batch_obs)
                 action_distribution = self.networks.create_action_distributions(logits)
                 action, logp = action_distribution.sample()
         else:
+            #print("original:",batch_obs.shape)
+           # pre_obs = self.networks.policy.pi_net(batch_obs)
+            #print("pre_obs:",pre_obs.shape)
             logits = self.networks.policy(batch_obs)
             action_distribution = self.networks.create_action_distributions(logits)
             action, logp = action_distribution.sample()

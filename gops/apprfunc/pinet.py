@@ -186,6 +186,8 @@ class StochaPolicy(nn.Module, Action_Distribution):
         self.freeze_pi_net = kwargs["freeze_pi_net"] == "actor" 
         input_dim = self.pi_net.output_dim
 
+        #print("sssssssssssss",input_dim)
+
         # mean and log_std are calculated by different MLP
         if self.std_type == "mlp_separated":
             pi_sizes = [input_dim] + list(hidden_sizes) + [act_dim]
