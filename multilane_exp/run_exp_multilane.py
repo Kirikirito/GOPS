@@ -14,8 +14,8 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_multilane_exp_0521_2' 
-exp_discription = 'enable multihead attntion had =8, low tau max iter=2_000_000, new veh param add boundary low safe margin, buffermax_size, new env reward and config (positive reward ending condition category critic and actor update pi) clip lower bound -1 add max num of bike and pedestrian add boundaryh obs(abs value), new map(no sur_obs) new pinet(add value mask) fix bug in sur obs filter'
+exp_name = 'idsim_multilane_exp_0529_only_multilane_5' 
+exp_discription = 'enable multihead attntion had =8, low tau max iter=2_000_000, new veh param add boundary low safe margin, buffermax_size, new env reward and config (positive reward ending condition category critic and actor update pi) clip lower bound -0.05 add max num of bike and pedestrian add boundaryh obs(abs value), new map(no sur_obs) new pinet(add value mask) fix bug in sur obs filter, add direction selector, low time constant for front vehicle fix boundary obs in junction,change live reward form, nomimal acc 2.5->1,5 only multilane, change corresponding configs, low tracking reward, clip boundary -5, no attn, no boundary, small random ref_v dynamic ref_v_lane, time_dist_coff:1.5->1, enable attn'
 
 
 script_folder = "dsac"

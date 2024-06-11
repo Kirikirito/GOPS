@@ -138,7 +138,7 @@ class idSimEnv(CrossRoad, Env):
             ) if self.use_random_ref_param else None
         if self.random_ref_v and not env_context.vehicle.in_junction:  # TODO: check if this is correct
             ref_v = np.random.uniform(*self.ref_v_range)
-            # self.model_config.ref_v_lane = float(ref_v)
+            self.model_config.ref_v_lane = float(ref_v)
             self.env_config.ref_v = float(ref_v)
             # print(f"INFO: change ref_v to {ref_v}")
             
@@ -171,7 +171,6 @@ class idSimEnv(CrossRoad, Env):
             self.engine.context.vehicle.init_vx(init_vx)
             print(f"INFO: fix state, init_action: {init_action}")
             self._state = self._get_state_from_idsim(ref_index_param=self.ref_index)
-    
     # @cal_ave_exec_time(print_interval=1000)
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         obs, reward, terminated, truncated, info = super(idSimEnv, self).step(action)
@@ -315,9 +314,9 @@ class idSimEnv(CrossRoad, Env):
         scenarios = scenario_list[idx% len(scenario_list)]
         self.env_config.scenario_selector = scenarios
         print(f"INFO: change current scenario to {scenarios}")
-        direction_list = [ "r", "l", None]
-        self.env_config.direction_selector = direction_list[(idx // len(scenario_list))%len(direction_list)] # FIXME: this is a hack
-        print(f"INFO: change current direction to {self.env_config.direction_selector}")
+        # direction_list = [ "r", "l", None]
+        # self.env_config.direction_selector = direction_list[(idx // len(scenario_list))%len(direction_list)] # FIXME: this is a hack
+        # print(f"INFO: change current direction to {self.env_config.direction_selector}")
         # direction_list = ["r", "s"]
         # self.env_config.direction_selector = direction_list[idx % len(direction_list)] # FIXME: this is a hack
         # print(f"INFO: change current direction to {self.env_config.direction_selector}")

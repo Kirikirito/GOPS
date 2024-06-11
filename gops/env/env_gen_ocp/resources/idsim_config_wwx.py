@@ -11,9 +11,9 @@ env_config_param_base = {
     "seed": 1,
     "actuator": "ExternalActuator",
     "scenario_reuse": 4,
-    "num_scenarios": 34,
+    "num_scenarios": 22,
     "multilane_scenarios": tuple(range(0, 22)),
-    "scenario_filter_surrounding_selector": '0,1,2,31,32,33',
+    "scenario_filter_surrounding_selector": '0,1,2',
     "detect_range": 60,
     "choose_vehicle_retries": 10,
     "choose_vehicle_step_time": 10,
@@ -24,12 +24,12 @@ env_config_param_base = {
     "warmup_time": 50.0,
     "max_steps": 200,
     "random_ref_v": True,
-    "ref_v_range": (0, 10.0),
+    "ref_v_range": (4, 10.0),
     "nonimal_acc": True,
     "ignore_traffic_lights": False,
     "no_done_at_collision": False, 
     "ignore_surrounding": False,
-    "ignore_opposite_direction": False,
+    "ignore_opposite_direction": True,
     "penalize_collision": True,
     "incremental_action": True,
     "action_lower_bound": (-4.0 * delta_t, -0.25 * delta_t),
@@ -37,9 +37,9 @@ env_config_param_base = {
     "real_action_lower_bound": (-3.0, -0.571),
     "real_action_upper_bound": (0.8, 0.571),
     "obs_num_surrounding_vehicles": {
-        "passenger": 12,
-        "bicycle": 4,
-        "pedestrian": 6,
+        "passenger": 6,
+        "bicycle": 2,
+        "pedestrian": 2,
     },
     "ref_v": 10.0,
     "ref_length": 48.0,
@@ -64,8 +64,8 @@ env_config_param_base = {
     # model free reward config
     "punish_sur_mode": "max",
     "enable_slow_reward": True,
-    "R_step": 15.0,
-    "P_lat": 12.0,
+    "R_step": 10.0,
+    "P_lat": 8.0,
     "P_long": 10.0,
     "P_phi": 3.0,
     "P_yaw": 2.0,
@@ -78,7 +78,7 @@ env_config_param_base = {
     "P_delta_steer": 0.15,
     "P_jerk": 0.1,
     "P_done": 200.0,
-    "P_boundary": 100,
+    "P_boundary": 0,
     "safety_lat_margin_front": 1.2,
     "safety_long_margin_front": 0.0,
     "safety_long_margin_side": 0.0,
@@ -86,13 +86,13 @@ env_config_param_base = {
     "space_dist_thd": 12.0,
     "rel_v_thd": 1.0,
     "rel_v_rear_thd": 3.0,
-    "time_dist": 1.5,
+    "time_dist": 1,
 }
 
 model_config_base = {
     "N": pre_horizon,
     "sur_obs_padding": "rule",
-    "add_boundary_obs": True,
+    "add_boundary_obs": False,
     "full_horizon_sur_obs": False,
     "ahead_lane_length_min": 6.0,
     "ahead_lane_length_max": 60.0,
@@ -154,7 +154,7 @@ model_config_base = {
         1.0  # surr is in front of ego
     ),
     "C_road": 300.0,
-    "ref_v_lane": 10.0,
+    "ref_v_lane": 9.0,
     "filter_num": 5
 }
 
@@ -164,21 +164,21 @@ model_config_crossroad = model_config_base
 env_config_param_multilane = {
     **env_config_param_base,
     "scenario_root": MAP_ROOT_MULTILANE,
-    "action_lower_bound": (-2.5 * delta_t, -0.15 * delta_t),
-    "action_upper_bound": (2.5 * delta_t, 0.15 * delta_t),
-    "real_action_lower_bound": (-1.5, -0.571),
-    "real_action_upper_bound": (0.8, 0.571),
+    "action_lower_bound": (-2.5 * delta_t, -0.065 * delta_t),
+    "action_upper_bound": (2.5 * delta_t, 0.065 * delta_t),
+    "real_action_lower_bound": (-1.5, -0.065),
+    "real_action_upper_bound": (0.8, 0.065),
     "use_random_acc": True,
     "random_acc_cooldown": (30, 50, 50), # cooldown for acceleration, deceleration and ref_v, respectively
     "random_acc_prob": (0.1, 0.1), # probability to accelerate and decelerate, respectively
     "random_acc_range": (0.2, 0.8), # (m/s^2), used for acceleration
-    "random_dec_range": (-2.5, -0.5), # (m/s^2), used for deceleration
+    "random_dec_range": (-1.5, -0.5), # (m/s^2), used for deceleration
 }
 
 model_config_multilane = {
     **model_config_base,
-    "real_action_lower": (-1.5, -0.571),
-    "real_action_upper": (0.8, 0.571),
+    "real_action_lower": (-1.5, -0.065),
+    "real_action_upper": (0.8, 0.065),
     "Q": (
         0.,
         0.5,

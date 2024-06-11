@@ -53,7 +53,7 @@ if __name__ == "__main__":
     base_env_model_config.update(extra_env_model_config)
     parser.add_argument("--env_config", type=dict, default=base_env_config)
     parser.add_argument("--env_model_config", type=dict, default=base_env_model_config)
-    parser.add_argument("--scenerios_list", type=list, default=[':22','22:'])
+    parser.add_argument("--scenerios_list", type=list, default=[':22',':22'])
 
     parser.add_argument("--vector_env_num", type=int, default=10, help="Number of vector envs")
     parser.add_argument("--vector_env_type", type=str, default='async', help="Options: sync/async")
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         help="Options: StateValue/ActionValue/ActionValueDis/ActionValueDistri",
     )
     parser.add_argument("--value_func_type", type=str, default="PINet", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
-    parser.add_argument("--value_hidden_sizes", type=list, default=[256, 256,256])
+    parser.add_argument("--value_hidden_sizes", type=list, default=[256, 256])
     parser.add_argument("--value_std_type", type=str, default='mlp_separated', help="Options: mlp_separated/mlp_shared")
     parser.add_argument(
         "--value_hidden_activation", type=str, default="gelu", help="Options: relu/gelu/elu/selu/sigmoid/tanh"
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         default="TanhGaussDistribution",
         help="Options: default/TanhGaussDistribution/GaussDistribution",
     )
-    parser.add_argument("--policy_hidden_sizes", type=list, default=[256, 256,256])
+    parser.add_argument("--policy_hidden_sizes", type=list, default=[256, 256])
     parser.add_argument(
         "--policy_hidden_activation", type=str, default="gelu", help="Options: relu/gelu/elu/selu/sigmoid/tanh"
     )
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     parser.add_argument("--obj_dim", type=int, default=pi_paras["obj_dim"])
     parser.add_argument("--head_num", type=int, default=8)
     parser.add_argument("--pi_out_dim", type=int, default= 256)
-    parser.add_argument("--pi_hidden_sizes", type=list, default=[256,256,256])
+    parser.add_argument("--pi_hidden_sizes", type=list, default=[256,256])
     parser.add_argument("--pi_hidden_activation", type=str, default="gelu")
     parser.add_argument("--pi_output_activation", type=str, default="linear")
     parser.add_argument("--freeze_pi_net", type=str, default="none")
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     parser.add_argument("--others_hidden_activation", type=str, default="gelu")
     parser.add_argument("--others_output_activation", type=str, default="linear")
     parser.add_argument("--others_out_dim", type=int, default=32)
-    max_iter = 2_000_000
+    max_iter = 1_000_000
     parser.add_argument("--policy_scheduler", type=json.loads, default={
         "name": "CosineAnnealingLR",
         "params": {
