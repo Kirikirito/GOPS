@@ -93,7 +93,8 @@ class IdsimIDCEvaluator(Evaluator):
         kwargs['env_config']['singleton_mode'] = 'invalidate'
         kwargs.update({
             "reward_scale": None,
-            "repeat_num": None,
+            "repeat_num": 1,
+            "act_seq_len": 1,
             "gym2gymnasium": False,
             "vector_env_num": None,
         })

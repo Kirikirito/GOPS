@@ -93,6 +93,7 @@ class IdsimIDCEvaluator(Evaluator):
         kwargs.update({
             "reward_scale": None,
             "repeat_num": None,
+            "act_seq_len": 1,
             "gym2gymnasium": False,
             "vector_env_num": None,
         })
