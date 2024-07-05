@@ -131,7 +131,7 @@ if __name__ == "__main__":
     # 2.3 Parameters of shared approximate function
     pi_paras = cal_idsim_pi_paras(env_config=base_env_config, env_model_config=base_env_model_config)
     parser.add_argument("--target_PI", type=bool, default=True)
-    parser.add_argument("--enable_self_attention", type=bool, default=True)
+    parser.add_argument("--enable_self_attention", type=bool, default=False)
     parser.add_argument("--pi_begin", type=int, default=pi_paras["pi_begin"])
     parser.add_argument("--pi_end", type=int, default=pi_paras["pi_end"])
     parser.add_argument("--enable_mask", type=bool, default=True)
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     # Batch size of sampler for buffer store
     parser.add_argument("--sample_batch_size", type=int, default=80)
     # Add noise to action for better exploration
-    parser.add_argument("--noise_params", type=dict, default={"mean": np.array([0,0], dtype=np.float32), "std": np.array([0.1,0.1], dtype=np.float32),},
+    parser.add_argument("--noise_params", type=dict, default={"mean": np.array([0,0], dtype=np.float32), "std": np.array([0.2,0.2], dtype=np.float32),},
         help="used for continuous action space")
 
     ################################################
