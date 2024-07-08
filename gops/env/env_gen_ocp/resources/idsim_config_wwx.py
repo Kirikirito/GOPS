@@ -52,6 +52,10 @@ env_config_param_base = {
     "use_multiple_path_for_multilane": True,
     "random_ref_cooldown":  80,
 
+    'add_sur_bias': True,
+    'sur_bias_range': (-1, 1),
+    'sur_bias_prob': 0.5,
+
     "takeover_bias": True, 
     "takeover_bias_prob": 1.0,
     "takeover_bias_x": (0.0, 0.1),
@@ -79,7 +83,7 @@ env_config_param_base = {
     "P_jerk": 0.2,
     "P_done": 200.0,
     "P_boundary": 0,
-    "safety_lat_margin_front": 0.5,
+    "safety_lat_margin_front": 0.3,
     "safety_long_margin_front": 0.0,
     "safety_long_margin_side": 0.0,
     "front_dist_thd": 50.0,

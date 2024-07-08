@@ -14,8 +14,8 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_multilane_exp_0704_only_multilane_1' 
-exp_discription = 'more buffer size, more eploration noise, disable attention'
+exp_name = 'idsim_multilane_exp_0704_only_multilane_3' 
+exp_discription = 'more buffer size, more eploration noise, disable attention, sur_bias, acc mode,fix bug of min_dist'
 
 script_folder = "dsac"
 algs = ['dsact']
