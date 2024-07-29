@@ -48,6 +48,7 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
 
         self.replay_batch_size = kwargs["replay_batch_size"]
         self.max_iteration = kwargs["max_iteration"]
+        self.freeze_iteration = kwargs.get("freeze_iteration", self.max_iteration +1)
         self.sample_interval = kwargs.get("sample_interval", 1)
         self.log_save_interval = kwargs["log_save_interval"]
         self.apprfunc_save_interval = kwargs["apprfunc_save_interval"]
@@ -97,6 +98,9 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
         self.start_time = time.time()
 
     def step(self):
+        # trainning phrase
+        if self.iteration == self.freeze_iteration:
+            self.change_train_phase()
         # sampling
         if self.iteration % self.sample_interval == 0:
             if self.sampler_tasks.count == 0:
@@ -141,11 +145,12 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
             add_scalars(self.sampler_tb_dict.pop(), self.writer, step=self.iteration)
             
         if self.iteration % (self.max_iteration//100) == 0:  # TODO: Hard code
-            stat_dict: Dict = self.buffer.sample_statistic(self.iteration)
-            with open(self.save_folder + "/buffer_vx_stat.csv", "a") as f:
-                f.write(stat_dict["vx"] + "\n")
-            with open(self.save_folder + "/buffer_y_ref_stat.csv", "a") as f:
-                f.write(stat_dict["y_ref"] + "\n")
+            pass
+            # stat_dict: Dict = self.buffer.sample_statistic(self.iteration)
+            # with open(self.save_folder + "/buffer_vx_stat.csv", "a") as f:
+            #     f.write(stat_dict["vx"] + "\n")
+            # with open(self.save_folder + "/buffer_y_ref_stat.csv", "a") as f:
+            #     f.write(stat_dict["y_ref"] + "\n")
         if self.per_flag and self.iteration % (self.max_iteration//20) == 0:  # TODO: Hard code
             self.buffer.save_data_dist(self.save_folder, self.iteration, replay_samples)
 
@@ -230,3 +235,11 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
             self.evaluator.run_evaluation.remote(self.iteration)
         )
         self.last_eval_iteration = self.iteration
+    def change_train_phase(self):
+        #self.networks.policy.freeze()
+        #self.networks.log_alpha.requires_grad = False
+        # self.networks.q1.freeze()
+        # self.networks.q2.freeze()
+        self.buffer.change_mode()
+        self.sampler.change_mode.remote()
+        

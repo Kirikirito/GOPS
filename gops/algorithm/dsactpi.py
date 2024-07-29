@@ -29,7 +29,7 @@ from gops.algorithm.base import AlgorithmBase, ApprBase
 from gops.create_pkg.create_apprfunc import create_apprfunc
 from gops.utils.tensorboard_setup import tb_tags
 from gops.utils.gops_typing import DataDict
-from gops.utils.common_utils import get_apprfunc_dict
+from gops.utils.common_utils import get_apprfunc_dict, FreezeParameters
 
 
 class ApproxContainer(ApprBase):
@@ -211,33 +211,28 @@ class DSACTPI(AlgorithmBase):
         self.networks.policy_optimizer.zero_grad()
         self.networks.pi_optimizer.zero_grad()
         loss_q, q1, q2, std1, std2, origin_q_loss, idx, td_err  = self.__compute_loss_q(data)
-        loss_q.backward()
+        if loss_q.requires_grad:
+            loss_q.backward() 
 
-        for p in self.networks.q1.ego_paras():
-            p.requires_grad = False
 
-        for p in self.networks.q2.ego_paras():
-            p.requires_grad = False
-
+        with FreezeParameters([self.networks.q1.q, self.networks.q2.q]):
  
-        loss_policy, entropy = self.__compute_loss_policy(data)
-        loss_policy.backward()
+            loss_policy, entropy = self.__compute_loss_policy(data)
+            loss_policy.backward()
 
-        for p in self.networks.q1.ego_paras():
-            p.requires_grad = True
-        for p in self.networks.q2.ego_paras():
-            p.requires_grad = True
+
 
         if self.auto_alpha:
             self.networks.alpha_optimizer.zero_grad()
-            loss_alpha = self.__compute_loss_alpha(data)
-            loss_alpha.backward()
+            if self.networks.log_alpha.requires_grad:
+                loss_alpha = self.__compute_loss_alpha(data)
+                loss_alpha.backward()
 
         # calculate gradient norm
-        q1_grad_norm = torch.norm( torch.cat([p.grad.flatten() for p in self.networks.q1.ego_paras()]))
-        q2_grad_norm = torch.norm( torch.cat([p.grad.flatten() for p in self.networks.q2.ego_paras()]))
-        policy_grad_norm = torch.norm( torch.cat([p.grad.flatten() for p in self.networks.policy.ego_paras()]))
-        pi_grad_norm = torch.norm( torch.cat([p.grad.flatten() for p in self.networks.pi_net.parameters()]))
+        q1_grad_norm = torch.norm( torch.cat([p.grad.flatten() for p in self.networks.q1.ego_paras() if p.grad is not None]))
+        q2_grad_norm = torch.norm( torch.cat([p.grad.flatten() for p in self.networks.q2.ego_paras() if p.grad is not None]))
+        policy_grad_norm = torch.norm( torch.cat([p.grad.flatten() for p in self.networks.policy.ego_paras() if p.grad is not None]))
+        pi_grad_norm = torch.norm( torch.cat([p.grad.flatten() for p in self.networks.pi_net.parameters() if p.grad is not None]))
         tb_info = {
             "DSAC2/critic_avg_q1-RL iter": q1.mean().detach().item(),
             "DSAC2/critic_avg_q2-RL iter": q2.mean().detach().item(),
@@ -282,12 +277,16 @@ class DSACTPI(AlgorithmBase):
             data["obs2"],
             data["done"],
         )
+        noise_obs = obs
+        noise_obs2 = obs2
+        obs = data.get("raw_obs", obs)
+        obs2 = data.get("raw_obs2", obs2)
         if self.per_flag:
             weight = data["weight"]
         else:
             weight = 1.0
         with torch.no_grad():
-            logits_2 = self.networks.policy_target(obs2)
+            logits_2 = self.networks.policy_target(noise_obs2)
             act2_dist = self.networks.create_action_distributions(logits_2)
             act2, log_prob_act2 = act2_dist.rsample()
 
@@ -410,6 +409,7 @@ class DSACTPI(AlgorithmBase):
 
     def __compute_loss_policy(self, data: DataDict):
         obs, new_act, new_log_prob = data["obs"], data["new_act"], data["new_log_prob"]
+        obs = data.get("raw_obs", obs)
         q1, _, _ = self.__q_evaluate(obs, new_act, self.networks.q1)
         q2, _, _ = self.__q_evaluate(obs, new_act, self.networks.q2)
         loss_policy = (self.__get_alpha() * new_log_prob - torch.min(q1,q2)).mean()

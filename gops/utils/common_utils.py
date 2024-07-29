@@ -152,6 +152,37 @@ def get_apprfunc_dict(key: str, **kwargs):
         var["loss_weight"] = kwargs[key + "_loss_weight"]
         var["tau_layer_num"] = kwargs["tau_layer_num"]
         var["seq_len"] = kwargs["seq_len"]
+    elif apprfunc_type == "PISMONET":
+        if key == "pi_net":
+            var["pi_begin"] = kwargs["pi_begin"]
+            var["pi_end"] = kwargs["pi_end"]
+            var["enable_mask"] = kwargs["enable_mask"]
+            var["obj_dim"] = kwargs["obj_dim"]
+            var["pi_out_dim"] = kwargs["pi_out_dim"]
+            var["encoding_others"] = kwargs["encoding_others"]
+            var["enable_self_attention"] = kwargs["enable_self_attention"]
+            var["head_num"] = kwargs.get("head_num", None)
+            var["attn_dim"] = kwargs.get("attn_dim", None)
+            if var["encoding_others"]:
+                var["others_out_dim"] = kwargs["others_out_dim"]
+                var["others_hidden_sizes"] = kwargs["others_hidden_sizes"]
+                var["others_hidden_activation"] = kwargs["others_hidden_activation"]
+                var["others_output_activation"] = kwargs["others_output_activation"]
+            var["pi_hidden_sizes"] = kwargs["pi_hidden_sizes"]
+            var["pi_hidden_activation"] = kwargs["pi_hidden_activation"]
+            var["pi_output_activation"] = kwargs["pi_output_activation"]
+        else:
+            var["pi_net"] = kwargs["pi_net"]
+            var["target_PI"] = kwargs["target_PI"]
+            var["freeze_pi_net"] = kwargs["freeze_pi_net"]
+            assert var["freeze_pi_net"] in ["actor", "critic", "none"]
+            var["hidden_sizes"] = kwargs[key + "_hidden_sizes"]
+            var["hidden_activation"] = kwargs[key + "_hidden_activation"]
+            var["output_activation"] = kwargs[key + "_output_activation"]
+            var["kernel_size"] = kwargs[key + "_kernel_size"]
+            var["loss_weight"] = kwargs[key + "_loss_weight"]
+            var["tau_layer_num"] = kwargs["tau_layer_num"]
+            var["seq_len"] = kwargs["seq_len"]
     else:
         raise NotImplementedError
 

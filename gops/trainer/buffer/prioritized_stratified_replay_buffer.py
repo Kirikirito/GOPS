@@ -33,7 +33,7 @@ class PrioritizedStratifiedReplayBuffer(PrioritizedReplayBuffer):
 
 
     def add_batch(self, samples: list):
-        list(map(lambda sample: self.store(*sample), samples))
+        super().add_batch(samples)
         self.categories_priority = (1 / (self.sum_tree[0] + self.epsilon)) ** self.alpha
 
     def update_tree(self, tree_idx):

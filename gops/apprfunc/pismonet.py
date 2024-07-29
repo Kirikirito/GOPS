@@ -22,12 +22,16 @@ __all__ = [
 
 import numpy as np
 import torch
+import warnings
+import itertools
 import torch.nn as nn
 from typing import Union, Tuple, List
 from torch.nn import functional as F
 from functorch import vmap, jacrev
-from gops.utils.common_utils import get_activation_func, cal_ave_exec_time
+from gops.utils.common_utils import get_activation_func, cal_ave_exec_time, FreezeParameters
 from gops.utils.act_distribution_cls import Action_Distribution
+# from gops.apprfunc.pinet import PiNet
+
 class ConvFilter(nn.Module):
     def __init__(
         self,
@@ -128,13 +132,13 @@ class FLinear(nn.Linear):
         
     def forward(self, input):
         dim_size = input.dim()
-        if self.kernel_size > 1 and dim_size > 2 and self.seq_input:
+        if self.kernel_size > 1 and dim_size > 2 and self.seq_input: #FIXME: dynamic control flow
             input = self.conv(input)
         output = self.cat_forward(input)  
         return output
     
     def cat_forward(self, input):
-        if self.seq_len == 1 or input.dim() <= 2:
+        if self.seq_len == 1 or input.dim() <= 2: #FIXME: dynamic control flow
             output = super(FLinear, self).forward(input)
         else:
             input_cur = input[:, -1:, :]
@@ -206,19 +210,6 @@ class FMLP(nn.Module):
 
 
 
-# def fmlp(sizes, kernel_size, activation,init_seq_len, output_activation=nn.Identity, loss_weight=0.,tau_layer_num=1):
-#     layers = []
-#     seq_len = init_seq_len
-#     for j in range(len(sizes) - 1):
-#         act = activation if j < len(sizes) - 2 else output_activation
-
-#         layers += [ FLinear(in_features=sizes[j], out_features=sizes[j + 1],
-#                            kernel_size=kernel_size[j], loss_weight=loss_weight,seq_len=seq_len,tau_layer_num=tau_layer_num), act(),]
-        
-#         seq_len = (seq_len - kernel_size[j] + 1)
-
-#   return nn.Sequential(*layers)
-
 # Define MLP function
 def mlp(sizes, activation, output_activation=nn.Identity):
     layers = []
@@ -233,7 +224,21 @@ def count_vars(module):
     return sum([np.prod(p.shape) for p in module.parameters()])
 
 
-# Deterministic policy
+
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        weight_shape = list(m.weight.data.size())
+        fan_in = weight_shape[1]
+        fan_out = weight_shape[0]
+        w_bound = np.sqrt(6. / (fan_in + fan_out))
+        m.weight.data.uniform_(-w_bound, w_bound)
+        if m.bias is not None:
+            m.bias.data.fill_(0)
+    elif isinstance(m, nn.BatchNorm1d):
+        m.weight.data.fill_(1)
+        if m.bias is not None:
+            m.bias.data.zero_()
+
 class DetermPolicy(nn.Module, Action_Distribution):
     """
     Approximated function of deterministic policy.
@@ -243,7 +248,7 @@ class DetermPolicy(nn.Module, Action_Distribution):
 
     def __init__(self, **kwargs):
         super().__init__()
-        obs_dim = kwargs["obs_dim"][1]  #FIXME: need to be updated
+        obs_dim = kwargs["obs_dim"][1]     #FIXME: need to be updated
         act_dim = kwargs["act_dim"]
         hidden_sizes = kwargs["hidden_sizes"]
         kernel_size = kwargs.get("kernel_size", [1] * (len(hidden_sizes) + 1))
@@ -283,7 +288,7 @@ class FiniteHorizonPolicy(nn.Module, Action_Distribution):
 
     def __init__(self, **kwargs):
         super().__init__()
-        obs_dim = kwargs["obs_dim"][1] + 1  # FIXME: need to be updated
+        obs_dim = kwargs["obs_dim"][1] + 1  #FIXME: need to be updated
         act_dim = kwargs["act_dim"]
         self.origin_obs_dim = obs_dim - act_dim -1
         hidden_sizes = kwargs["hidden_sizes"]
@@ -335,6 +340,7 @@ class StochaPolicy(nn.Module, Action_Distribution):
         act_dim = kwargs["act_dim"]
         self.origin_obs_dim = obs_dim - act_dim
         self.act_dim = act_dim
+        self.obs_dim = obs_dim
         hidden_sizes = kwargs["hidden_sizes"]
         kernel_size = kwargs.get("kernel_size", [1] * (len(hidden_sizes) + 1))
         loss_weight = kwargs.get("loss_weight", 0.)
@@ -342,9 +348,13 @@ class StochaPolicy(nn.Module, Action_Distribution):
         init_seq_len = kwargs["seq_len"]
         tau_layer_num = kwargs.get("tau_layer_num", 1)
         self._is_freeze = False
+
+        self.pi_net = kwargs["pi_net"]
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "actor" 
+        input_dim = self.pi_net.output_dim
         # mean and log_std are calculated by different MLP
         if self.std_type == "mlp_separated":
-            pi_sizes = [obs_dim] + list(hidden_sizes) + [act_dim]
+            pi_sizes = [input_dim] + list(hidden_sizes) + [act_dim]
             self.mean = FMLP(
             pi_sizes,
             kernel_size,
@@ -366,7 +376,7 @@ class StochaPolicy(nn.Module, Action_Distribution):
         )
         # mean and log_std are calculated by same MLP
         elif self.std_type == "mlp_shared":
-            pi_sizes = [obs_dim] + list(hidden_sizes) + [act_dim * 2]
+            pi_sizes = [input_dim] + list(hidden_sizes) + [act_dim * 2]
             self.policy = FMLP(
             pi_sizes,
             kernel_size,
@@ -378,7 +388,7 @@ class StochaPolicy(nn.Module, Action_Distribution):
         )
         # mean is calculated by MLP, and log_std is learnable parameter
         elif self.std_type == "parameter":
-            pi_sizes = [obs_dim] + list(hidden_sizes) + [act_dim]
+            pi_sizes = [input_dim] + list(hidden_sizes) + [act_dim]
             self.mean = FMLP(
             pi_sizes,
             kernel_size,
@@ -398,16 +408,31 @@ class StochaPolicy(nn.Module, Action_Distribution):
         self.register_buffer("act_low_lim", act_low_lim)
         self.action_distribution_cls = kwargs["action_distribution_cls"]
         self.need_regularization = False
+    def shared_paras(self):
+        return self.pi_net.parameters()
+
+    def ego_paras(self):
+        return itertools.chain(*[modules.parameters() for modules in self.children() if modules != self.pi_net])
+        
 
     def forward(self, obs):
         # obs = obs.transpose(-1, -2)  # trans to (batch_size, obs_dim, seq_len)
+        
+        with FreezeParameters([self.pi_net], self.freeze_pi_net):
+            if obs.dim() == 3: #FIXME: dynamic control flow
+                seq_len = obs.shape[1]
+                bath_size = obs.shape[0]
+                obs = obs.view(-1, self.obs_dim)
+                encoding = self.pi_net(obs).view(bath_size, seq_len, -1)
+            else:
+                encoding = self.pi_net(obs) 
         if self.std_type == "mlp_separated":
-            action_mean = self.mean(obs).view(-1,self.act_dim)
+            action_mean = self.mean(encoding).view(-1,self.act_dim)
             action_std = torch.clamp(
-                self.log_std(obs).view(-1,self.act_dim), self.min_log_std, self.max_log_std
+                self.log_std(encoding).view(-1,self.act_dim), self.min_log_std, self.max_log_std
             ).exp()
         elif self.std_type == "mlp_shared":
-            logits = self.policy(obs).view(-1, 2*self.act_dim)
+            logits = self.policy(encoding).view(-1, 2*self.act_dim)
             action_mean, action_log_std = torch.chunk(
                 logits, chunks=2, dim=-1
             )  # output the mean
@@ -415,7 +440,7 @@ class StochaPolicy(nn.Module, Action_Distribution):
                 action_log_std, self.min_log_std, self.max_log_std
             ).exp()
         elif self.std_type == "parameter":
-            action_mean = self.mean(obs).view(-1,self.act_dim)
+            action_mean = self.mean(encoding).view(-1,self.act_dim)
             action_log_std = self.log_std + torch.zeros_like(action_mean)
             action_std = torch.clamp(
                 action_log_std, self.min_log_std, self.max_log_std
@@ -452,10 +477,16 @@ class ActionValue(nn.Module, Action_Distribution):
         super().__init__()
         obs_dim = kwargs["obs_dim"]
         act_dim = kwargs["act_dim"]
+        self.obs_dim = obs_dim
+        
+        self.pi_net = kwargs["pi_net"]
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic"
+        input_dim = self.pi_net.output_dim + act_dim
+        
         hidden_sizes = kwargs["hidden_sizes"]
         kernel_size = kwargs.get("kernel_size", [1] * (len(hidden_sizes) + 1))
         loss_weight = kwargs.get("loss_weight", 0.)
-        pi_sizes = [obs_dim + act_dim] + list(hidden_sizes) + [1]
+        pi_sizes = [input_dim] + list(hidden_sizes) + [1]
         init_seq_len = kwargs["seq_len"]
         tau_layer_num = kwargs.get("tau_layer_num", 1)
 
@@ -470,12 +501,25 @@ class ActionValue(nn.Module, Action_Distribution):
         )
         self.action_distribution_cls = kwargs["action_distribution_cls"]
 
+    def shared_paras(self):
+        return self.pi_net.parameters()
+    
+    def ego_paras(self):
+        return itertools.chain(*[modules.parameters() for modules in self.children() if modules != self.pi_net])
+
     def forward(self, obs, act):
         # obs = obs.transpose(-1, -2)  # trans to (batch_size, obs_dim, seq_len)
         # expand_act = act.unsqueeze(-1).expand(-1, -1, obs.shape[-1])
-
+        with FreezeParameters([self.pi_net], self.freeze_pi_net):
+            if obs.dim() == 3: #FIXME: dynamic control flow
+                seq_len = obs.shape[1]
+                bath_size = obs.shape[0]
+                obs = obs.view(-1, self.obs_dim)
+                encoding = self.pi_net(obs).view(bath_size, seq_len, -1)
+            else:
+                encoding = self.pi_net(obs) 
         expand_act = act.unsqueeze(-2).expand(-1, obs.shape[-2],-1) # (batch_size, seq_len, obs_dim)
-        input = torch.cat([obs, expand_act], dim=-1)
+        input = torch.cat([encoding, expand_act], dim=-1)
 
         q = self.q(input).view(-1, 1)
         return torch.squeeze(q, -1)
@@ -514,11 +558,17 @@ class ActionValueDistri(nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
         obs_dim = kwargs["obs_dim"]
+        self.obs_dim = obs_dim
         act_dim = kwargs["act_dim"]
         hidden_sizes = kwargs["hidden_sizes"]
+        self.pi_net = kwargs["pi_net"]
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic"
+        self.std_type = kwargs["std_type"]
+        input_dim = self.pi_net.output_dim + act_dim        
+
         kernel_size = kwargs.get("kernel_size", [1] * (len(hidden_sizes) + 1))
         loss_weight = kwargs.get("loss_weight", 0.)
-        pi_sizes = [obs_dim + act_dim] + list(hidden_sizes) + [2]
+        pi_sizes = [input_dim] + list(hidden_sizes) + [2]
         init_seq_len = kwargs["seq_len"]
         tau_layer_num = kwargs.get("tau_layer_num", 1)
         self.q = FMLP(
@@ -534,14 +584,28 @@ class ActionValueDistri(nn.Module):
         self.min_log_std = kwargs["min_log_std"]
         self.max_log_std = kwargs["max_log_std"]
         self.denominator = max(abs(self.min_log_std), self.max_log_std)
+    def shared_paras(self):
+        return self.pi_net.parameters()
+
+    def ego_paras(self):
+        return itertools.chain(*[modules.parameters() for modules in self.children() if modules != self.pi_net])
 
     def forward(self, obs, act):
+        
+        with FreezeParameters([self.pi_net], self.freeze_pi_net):
+            if obs.dim() == 3: #FIXME: dynamic control flow
+                seq_len = obs.shape[1]
+                bath_size = obs.shape[0]
+                obs = obs.view(-1, self.obs_dim)
+                encoding = self.pi_net(obs).view(bath_size, seq_len, -1)
+            else:
+                encoding = self.pi_net(obs) 
         if obs.dim() == 3:
             expand_act = act.unsqueeze(-2).expand(-1, obs.shape[-2],-1) # (batch_size, seq_len, obs_dim)
-            input = torch.cat([obs, expand_act], dim=-1)
+            input = torch.cat([encoding, expand_act], dim=-1)
             logits = self.q(input).view(-1, 2)
         else:
-            logits = self.q(torch.cat([obs, act], dim=-1))
+            logits = self.q(torch.cat([encoding, act], dim=-1))
         value_mean, value_std = torch.chunk(logits, chunks=2, dim=-1)
         value_log_std = torch.nn.functional.softplus(value_std) 
         return torch.cat((value_mean, value_log_std), dim=-1)
@@ -552,6 +616,57 @@ class ActionValueDistri(nn.Module):
                 module.freeze()
 
 
+class ActionValueDistriMultiR(nn.Module):
+    """
+    Approximated function of distributed action-value function.
+    Input: observation.
+    Output: parameters of action-value distribution.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        act_dim = kwargs["act_dim"]
+        hidden_sizes = kwargs["hidden_sizes"]
+        self.pi_net = kwargs["pi_net"]
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic"
+        input_dim = self.pi_net.output_dim + act_dim
+        self.q = mlp(
+            [input_dim] + list(hidden_sizes) + [2],
+            get_activation_func(kwargs["hidden_activation"]),
+            get_activation_func(kwargs["output_activation"]),
+        )
+        if "min_log_std"  in kwargs or "max_log_std" in kwargs:
+            warnings.warn("min_log_std and max_log_std are deprecated in ActionValueDistri.")
+
+        #rew_comp_dim = reduce(lambda x, y: x + y, [value["shape"] for value in kwargs["additional_info"].values()])
+        rew_comp_dim = kwargs["additional_info"]["reward_comps"]["shape"][0]
+        self.q_comp = mlp(
+            [input_dim] + list(hidden_sizes) + [rew_comp_dim],
+            get_activation_func(kwargs["hidden_activation"]),
+            get_activation_func(kwargs["output_activation"]),
+        )
+
+    def shared_paras(self):
+        return self.pi_net.parameters()
+
+    def ego_paras(self):
+        return itertools.chain(*[modules.parameters() for modules in self.children() if modules != self.pi_net])
+
+    def forward(self, obs, act):
+        
+        with FreezeParameters([self.pi_net], self.freeze_pi_net):
+            encoding = self.pi_net(obs)
+        
+        logits = self.q(torch.cat([encoding, act], dim=-1))
+        value_mean, value_std = torch.chunk(logits, chunks=2, dim=-1)
+        value_log_std = torch.nn.functional.softplus(value_std) 
+
+        return torch.cat((value_mean, value_log_std), dim=-1)
+    
+    def cal_comp(self, obs, act):
+        with FreezeParameters([self.pi_net], True):
+            encoding = self.pi_net(obs)
+        return self.q_comp(torch.cat([encoding, act], dim=-1))
 class StochaPolicyDis(ActionValueDis, Action_Distribution):
     """
     Approximated function of stochastic policy for discrete action space.

@@ -103,7 +103,7 @@ def init_args(env, **args):
     else:
         args["cnn_shared"] = False
 
-    if "value_func_type" in args.keys() and args["value_func_type"] == "PINet":
+    if "value_func_type" in args.keys() and (args["value_func_type"] == "PINet" or args["value_func_type"] == "PISMONET"):
         if "policy_func_type" in args.keys():
             assert (
                 args["value_func_type"] == args["policy_func_type"]
@@ -131,6 +131,7 @@ def init_args(env, **args):
     # set random seed
     seed = args.get("seed", None)
     args["seed"] = seed_everything(seed)
+    args["seq_len"] = args.get("seq_len", 1)
     print("Set global seed to {}".format(args["seed"]))
     with open(args["save_folder"] + "/config.json", "w", encoding="utf-8") as f:
         json.dump(change_type(copy.deepcopy(args)), f, ensure_ascii=False, indent=4)
@@ -141,7 +142,7 @@ def init_args(env, **args):
     else:
         args["additional_info"] = {}
 
-    args["seq_len"] = args.get("seq_len", 1)
+
 
     # Start a new local Ray instance
     # This is necessary since all training scripts use evaluator, which uses ray.

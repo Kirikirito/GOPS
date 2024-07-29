@@ -166,22 +166,15 @@ class OffSerialTrainer:
         if self.iteration % self.apprfunc_save_interval == 0:
             self.save_apprfunc()
 
-        if self.iteration % 43 == 0:
-            self.writer.add_scalar(
-                tb_tags["step_time"],
-                (time.time() - step_start_time) * 1000,
-                self.iteration,
-            )
     
     def record_eval(self, ):
         eval_ite = self.last_eval_iteration
         objID = next(self.evluate_tasks.completed())[1]
-        total_avg_return, total_max_constraint = ray.get(objID)
+        total_avg_return = ray.get(objID)
 
         if (
             total_avg_return >= self.best_tar
             and self.iteration >= self.max_iteration / 5
-            and total_max_constraint <= 0
         ):
             self.best_tar = total_avg_return
             print("Best return = {}!".format(str(self.best_tar)))
@@ -203,9 +196,6 @@ class OffSerialTrainer:
         )
         self.writer.add_scalar(
             tb_tags["TAR of RL iteration"], total_avg_return, eval_ite
-        )
-        self.writer.add_scalar(
-            tb_tags["CON of RL iteration"], total_max_constraint, eval_ite
         )
         self.writer.add_scalar(
             tb_tags["TAR of replay samples"],
@@ -241,7 +231,7 @@ class OffSerialTrainer:
             self.networks.state_dict(),
             self.save_folder + "/apprfunc/apprfunc_{}.pkl".format(self.iteration),
         )
-        self.sampler.save(self.save_folder + "/sampler")
+        self.sampler.save.remote(self.save_folder + "/sampler")
         
 
     def _add_eval_task(self):
@@ -269,5 +259,5 @@ class OffSerialTrainer:
         # self.networks.q1.freeze()
         # self.networks.q2.freeze()
         self.buffer.change_mode()
-        self.sampler.change_mode()
+        self.sampler.change_mode.remote()
         

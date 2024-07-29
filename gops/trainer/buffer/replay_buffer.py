@@ -74,7 +74,7 @@ class BufferData:
 
     def __is_overlapping(self, prev_idxes: np.ndarray) -> np.ndarray:
         cur_idxes = prev_idxes + self.vec_dim
-        temp_idxes = self.prev_ptr + (cur_idxes>= self.size) * self.size
+        temp_idxes = self.prev_ptr + (cur_idxes>= self.size) *(self.prev_ptr - self.vec_dim<=0) * self.size
         return np.logical_and(prev_idxes<= temp_idxes, temp_idxes < cur_idxes)
 
 
@@ -95,7 +95,7 @@ class BufferData:
             idxes_list.reverse() # the last idx is the current idx
             for k, v in self.data.items():
                 if k in ["obs", "obs2"]:
-                    batch[k] = torch.as_tensor(np.stack([v[idxes] for idxes in idxes_list], axis=1), dtype=torch.float32)
+                    batch[k] = torch.as_tensor(np.stack([v[idx] for idx in idxes_list], axis=1), dtype=torch.float32)
                 elif k in ["act"]:
                     batch[k] = torch.as_tensor(v[idxes_list[-1]], dtype=torch.float32) # only use the current action
                     
@@ -104,6 +104,10 @@ class BufferData:
                         batch[k] = torch.as_tensor(v[idxes], dtype=torch.float32)
                     else:
                         batch[k] = v[idxes].array2tensor()
+
+            if "step" in self.additional_info.keys():
+                batch["step"] = torch.as_tensor(np.stack([self.data["step"][idxes] for idxes in idxes_list], axis=1), dtype=torch.float32)
+                self.check_conti(batch["step"])
             if add_noise:
                 obs_noise = torch.as_tensor(np.stack([self.data["noise"][idxes] for idxes in idxes_list], axis=1), dtype=torch.float32)
                 noise_level_scale = torch.randint(low=0, high=3, size=(batch_size,1), dtype=torch.float32)/3
@@ -120,6 +124,11 @@ class BufferData:
                 else:
                     batch[k] = torch.stack([v[idxes].array2tensor() for idxes in idxes_list], axis=1)
         return batch
+    def check_conti(self, batch_step):
+        diff_1 = batch_step[:, 1:] - batch_step[:, :-1]
+        diff_2 = diff_1[:, 1:] - diff_1[:, :-1]
+        assert torch.all(diff_1 <= 1) and torch.all(diff_1 >= 0) and torch.all(diff_2 >= 0), f"step is not continuous:{batch_step[torch.nonzero((diff_1 <= 1)*(diff_1 >= 0))]}" # TODO: more concise
+
     
     def store(self,
               exp: Experience,

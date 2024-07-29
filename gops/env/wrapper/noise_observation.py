@@ -47,7 +47,7 @@ class NoiseData(gym.Wrapper):
         and Lower bounds of Uniform distribution.
     """
 
-    def __init__(self, env, noise_type: str, noise_data: list, seed= None, add_to_info=False, rel_noise_scale=False):
+    def __init__(self, env, noise_type: str, noise_data: list, seed= None, add_to_info=False, rel_noise_scale=False, record_step_info =True):
         super(NoiseData, self).__init__(env)
         assert noise_type in ["normal", "uniform","sine"]
         assert (
@@ -71,6 +71,8 @@ class NoiseData(gym.Wrapper):
             self.running_mean_delta_obs = 0
             self.prev_obs = 0
         # self.seed(1919)
+        self.record_step_info = record_step_info
+        self._step = 0
 
     def observation(self, observation):
         if self.rel_noise_scale:
@@ -100,12 +102,16 @@ class NoiseData(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
+        self._step = 0
         if self.rel_noise_scale:
             self.prev_obs = obs
         obs_noised, noise = self.observation(obs)
         if self.add_to_info:
             info["noise"] = noise
             info["running_mean_obs"] = self.running_mean_delta_obs
+        if self.record_step_info:
+            info["step"] = self._step
+            self._step += 1
         return obs_noised, info
 
     def step(self, action: ActType) -> Tuple[ObsType, float, bool, dict]:
@@ -113,6 +119,9 @@ class NoiseData(gym.Wrapper):
         obs_noised, noise = self.observation(obs)
         if self.add_to_info:
             info["noise"] = noise
+        if self.record_step_info:
+            info["step"] = self._step
+            self._step += 1
         return obs_noised, r, d, info
 
     def seed(self, seed=None):
@@ -131,6 +140,8 @@ class NoiseData(gym.Wrapper):
         if self.add_to_info:
             noise_sample = self.observation(self.env.observation_space.sample())[1]
             env_info["noise"] = {"shape": noise_sample.shape, "dtype": noise_sample.dtype}
+        if self.record_step_info:
+            env_info["step"] = {"shape": (1,), "dtype": np.int32}
         return env_info
 
 
