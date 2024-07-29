@@ -14,16 +14,18 @@
 #  Update: 2021-03-05, Ziqing Gu: create DSAC algorithm
 #  Update: 2021-03-05, Wenxuan Wang: debug DSAC algorithm
 
-__all__=["ApproxContainer","DSACT"]
+__all__=["ApproxContainer","DSSACT"]
 import time
 from copy import deepcopy
 from typing import Tuple
 
 import torch
 import torch.nn as nn
+from torch import autograd
 from torch.distributions import Normal
 from torch.optim import Adam
 from torch.nn.functional import huber_loss
+from torch.func import vmap, jacrev
 
 from gops.algorithm.base import AlgorithmBase, ApprBase
 from gops.create_pkg.create_apprfunc import create_apprfunc
@@ -62,6 +64,7 @@ class ApproxContainer(ApprBase):
 
         # create entropy coefficient
         self.log_alpha = nn.Parameter(torch.tensor(1, dtype=torch.float32))
+        self.log_beta = nn.Parameter(torch.tensor(-5, dtype=torch.float32))
 
         # create optimizers
         self.q1_optimizer = Adam(self.q1.parameters(), lr=kwargs["value_learning_rate"])
@@ -70,11 +73,13 @@ class ApproxContainer(ApprBase):
             self.policy.parameters(), lr=kwargs["policy_learning_rate"]
         )
         self.alpha_optimizer = Adam([self.log_alpha], lr=kwargs["alpha_learning_rate"])
+        self.beta_optimizer = Adam([self.log_beta], lr=kwargs["beta_learning_rate"])
         self.optimizer_dict = {
             "policy": self.policy_optimizer,
             "q1": self.q1_optimizer,
             "q2": self.q2_optimizer,
             "alpha": self.alpha_optimizer,
+            "beta": self.beta_optimizer,
         }
         self.init_scheduler(**kwargs)
 
@@ -83,7 +88,7 @@ class ApproxContainer(ApprBase):
         return self.policy.get_act_dist(logits)
 
 
-class DSACT(AlgorithmBase):
+class DSSACT(AlgorithmBase):
     """DSAC algorithm with three refinements, higher performance and more stable.
 
     Paper: https://arxiv.org/abs/2310.05858
@@ -104,10 +109,22 @@ class DSACT(AlgorithmBase):
         self.tau = kwargs["tau"]
         self.target_entropy = -kwargs["action_dim"]
         self.auto_alpha = kwargs["auto_alpha"]
+        self.auto_beta = kwargs.get("auto_beta", False)
+        self.adaptive_method = kwargs.get("adaptive_method", "rew") 
         self.alpha = kwargs.get("alpha", 0.2)
+        self.beta = kwargs.get("beta", 0)
+        self.smo_ratio = kwargs.get("smo_ratio", 0.05)
+        self.smooth_q = kwargs.get("smooth_q", False)
         self.delay_update = kwargs["delay_update"]
+        self.smo = 0.
         self.mean_std1= None
         self.mean_std2= None
+        self.mean_rew = None
+        self.norm_ratio = 1
+        self.policy_norm = 1
+        self.cur_policy_norm = 1
+        self.smooth_norm = 1*self.smo_ratio
+        self.cur_smooth_norm = 1
         self.tau_b = kwargs.get("tau_b", self.tau)
         self.rec1 = TimePerfRecorder("backward_q",print_interval=100)
         self.rec2 = TimePerfRecorder("backward_policy",print_interval=100)
@@ -170,6 +187,16 @@ class DSACT(AlgorithmBase):
         else:
             return self.alpha
 
+    def _get_beta(self, requires_grad: bool = False):
+        if self.auto_beta:
+            beta = self.networks.log_beta.exp()
+            if requires_grad:
+                return beta
+            else:
+                return beta.item()
+        else:
+            return self.beta
+
     def _compute_gradient(self, data: DataDict, iteration: int):
         start_time = time.time()
 
@@ -193,8 +220,35 @@ class DSACT(AlgorithmBase):
         with FreezeParameters([self.networks.q1, self.networks.q2]):
 
             self.networks.policy_optimizer.zero_grad()
-            loss_policy, entropy = self._compute_loss_policy(data)
+            loss_policy, entropy, smo, smooth_penalty = self._compute_loss_policy(data)
             loss_policy.backward()
+            # cal policy grad norm
+            policy_grad_norm = torch.norm( torch.stack([p.grad.norm() for p in self.networks.policy.parameters()]))
+            self.policy_norm = (1-self.tau_b)*self.policy_norm + self.tau_b * policy_grad_norm
+            self.cur_policy_norm = policy_grad_norm
+            if self.smo_ratio > 0: 
+                grads = torch.autograd.grad(smooth_penalty, self.networks.policy.parameters())
+                smooth_grad_norm = torch.norm( torch.stack([g.norm() for g in grads]))
+                self.smooth_norm = (1-self.tau_b)*self.smooth_norm + self.tau_b * smooth_grad_norm
+                self.cur_smooth_norm = smooth_grad_norm
+
+                
+                # add smooth grad to policy grad
+                for p, grad in zip(self.networks.policy.parameters(), grads):
+                    if p.grad is None:
+                        p.grad = torch.zeros_like(p)  # 确保梯度不是 None
+                    p.grad.add_(grad)
+
+            
+                # for p, grad in zip(self.networks.policy.parameters(), grads):
+                #     if p.grad is None:
+                #         p.grad = torch.zeros_like(p)  # 确保梯度不是 None
+                #         p.grad.sign_()
+                #     p.grad.mul_(1 + (p.grad.sign() * grad.sign()) * self.smo_ratio) # 保持梯度方向一致
+
+                # print(f"policy grad norm: {policy_grad_norm}, total grad norm: {total_grad_norm}")
+                self.norm_ratio = smooth_grad_norm / policy_grad_norm
+
 
 
         if self.auto_alpha:
@@ -202,6 +256,12 @@ class DSACT(AlgorithmBase):
             if self.networks.log_alpha.requires_grad:
                 loss_alpha = self._compute_loss_alpha(data)
                 loss_alpha.backward()
+
+        if self.auto_beta:
+            self.networks.beta_optimizer.zero_grad()
+            if self.networks.log_beta.requires_grad:
+                loss_beta = self._compute_loss_beta(data)
+                loss_beta.backward()    
 
         tb_info = {
             "DSAC2/critic_avg_q1-RL iter": q1.mean().detach().item(),
@@ -217,7 +277,14 @@ class DSACT(AlgorithmBase):
             "DSAC2/policy_mean-RL iter": policy_mean,
             "DSAC2/policy_std-RL iter": policy_std,
             "DSAC2/entropy-RL iter": entropy.item(),
+            "DSAC2/smooth-RL iter": smo.item(),
+            "DSAC2/norm_ratio-RL iter": self.norm_ratio,
+            "DSAC2/policy_norm-RL iter": self.policy_norm,
+            "DSAC2/smooth_norm-RL iter": self.smooth_norm,
+            "DSAC2/cur_smooth_norm-RL iter": self.cur_smooth_norm,
+            "DSAC2/cur_policy_norm-RL iter": self.cur_policy_norm,
             "DSAC2/alpha-RL iter": self._get_alpha(),
+            "DSAC2/beta-RL iter": self._get_beta(),
             "DSAC2/mean_std1": self.mean_std1,
             "DSAC2/mean_std2": self.mean_std2,
             tb_tags["alg_time"]: (time.time() - start_time) * 1000,
@@ -263,7 +330,10 @@ class DSACT(AlgorithmBase):
         else:
             self.mean_std2 = (1 - self.tau_b) * self.mean_std2 + self.tau_b * torch.mean(q2_std.detach())
 
-
+        if self.mean_rew is None:
+            self.mean_rew = torch.mean(rew.detach())
+        else:
+            self.mean_rew = (1 - self.tau_b) * self.mean_rew + self.tau_b * torch.mean(rew.detach())
         q1_next, _, q1_next_sample = self._q_evaluate(
             obs2, act2, self.networks.q1_target
         )
@@ -274,6 +344,10 @@ class DSACT(AlgorithmBase):
         q_next = torch.min(q1_next, q2_next)
         q_next_sample = torch.where(q1_next < q2_next, q1_next_sample, q2_next_sample)
 
+        if self.smooth_q:
+            smo_next = self._compute_smoothness(obs2)
+        else:
+            smo_next = torch.zeros_like(q_next)
         target_q1, target_q1_bound = self._compute_target_q(
             rew,
             done,
@@ -282,6 +356,7 @@ class DSACT(AlgorithmBase):
             q_next.detach(),
             q_next_sample.detach(),
             log_prob_act2.detach(),
+            smo_next.detach()
         )
         
         target_q2, target_q2_bound = self._compute_target_q(
@@ -292,14 +367,34 @@ class DSACT(AlgorithmBase):
             q_next.detach(),
             q_next_sample.detach(),
             log_prob_act2.detach(),
+            smo_next.detach()
         )
 
         q1_std_detach = torch.clamp(q1_std, min=0.).detach()
         q2_std_detach = torch.clamp(q2_std, min=0.).detach()
         bias = 0.1
 
-        ratio1 = torch.pow(self.mean_std1, 2) / (torch.pow(q1_std_detach, 2) + bias).clamp(min=0.1, max=10)
-        ratio2 = torch.pow(self.mean_std2, 2) / (torch.pow(q2_std_detach, 2) + bias).clamp(min=0.1, max=10)
+        ratio1 = (torch.pow(self.mean_std1, 2) / (torch.pow(q1_std_detach, 2) + bias)).clamp(min=0, max=10)
+        ratio2 = (torch.pow(self.mean_std2, 2) / (torch.pow(q2_std_detach, 2) + bias)).clamp(min=0, max=10)
+
+
+
+        # # form6
+        # q1_loss = torch.mean(ratio1 *(huber_loss(q1, target_q1, delta = 1000, reduction='none')) 
+        #                               + q1_std *(q1_std_detach.pow(2) - huber_loss(q1.detach(), target_q1_bound, delta = 1000, reduction='none'))/(q1_std_detach.pow(3) +bias)
+        #                     )
+        # q2_loss = torch.mean(ratio2 *(huber_loss(q2, target_q2, delta = 1000, reduction='none'))
+        #                               + q2_std *(q2_std_detach.pow(2) - huber_loss(q2.detach(), target_q2_bound, delta = 1000, reduction='none'))/(q2_std_detach.pow(3) +bias)
+        #                     )
+        # form5
+        q1_loss = torch.mean(ratio1 *(huber_loss(q1, target_q1, delta = 1000, reduction='none') 
+                                      + q1_std *(q1_std_detach.pow(2) - huber_loss(q1.detach(), target_q1_bound, delta = 1000, reduction='none'))/(q1_std_detach +bias)
+                            ))
+        q2_loss = torch.mean(ratio2 *(huber_loss(q2, target_q2, delta = 1000, reduction='none')
+                                      + q2_std *(q2_std_detach.pow(2) - huber_loss(q2.detach(), target_q2_bound, delta = 1000, reduction='none'))/(q2_std_detach +bias)
+                            ))
+
+
 
         # q1_loss = torch.mean(ratio1 *(huber_loss(q1, target_q1, delta = 30, reduction='none')) + torch.log(q1_std +bias)
         #                               - q1_std * huber_loss(q1.detach(), target_q1_bound, delta = 30, reduction='none')/(q1_std_detach +bias).pow(3)
@@ -307,15 +402,15 @@ class DSACT(AlgorithmBase):
                             
         # q2_loss = torch.mean(ratio2 *(huber_loss(q2, target_q2, delta = 30, reduction='none')) + torch.log(q2_std +bias)
         #                               - q2_std * huber_loss(q2.detach(), target_q2_bound, delta = 30, reduction='none')/(q2_std_detach +bias).pow(3)
-        #                              )
+        #                           )
                             
         # form3
-        q1_loss = torch.mean(ratio1 *(huber_loss(q1, target_q1, delta = 30, reduction='none')) 
-                                      + q1_std *(q1_std_detach.pow(2) - huber_loss(q1.detach(), target_q1_bound, delta = 30, reduction='none'))/(q1_std_detach.pow(3) +bias)
-                            )
-        q2_loss = torch.mean(ratio2 *(huber_loss(q2, target_q2, delta = 30, reduction='none'))
-                                      + q2_std *(q2_std_detach.pow(2) - huber_loss(q2.detach(), target_q2_bound, delta = 30, reduction='none'))/(q2_std_detach.pow(3) +bias)
-                            )
+        # q1_loss = torch.mean(ratio1 *(huber_loss(q1, target_q1, delta = 1000, reduction='none')) 
+        #                               + q1_std *(q1_std_detach.pow(2) - huber_loss(q1.detach(), target_q1_bound, delta = 1000, reduction='none'))/(q1_std_detach.pow(3) +bias)
+        #                     )
+        # q2_loss = torch.mean(ratio2 *(huber_loss(q2, target_q2, delta = 1000, reduction='none'))
+        #                               + q2_std *(q2_std_detach.pow(2) - huber_loss(q2.detach(), target_q2_bound, delta = 1000, reduction='none'))/(q2_std_detach.pow(3) +bias)
+        #                     )
         # form4 should similar to form 0
         # q1_loss = torch.mean(ratio1 *(huber_loss(q1, target_q1, delta = 30, reduction='none') 
         #                               + q1_std *(q1_std_detach.pow(2) - huber_loss(q1.detach(), target_q1_bound, delta = 30, reduction='none'))/(q1_std_detach.pow(3) +bias)
@@ -351,6 +446,7 @@ class DSACT(AlgorithmBase):
         #     -((torch.pow(q2.detach() - target_q2_bound, 2)- q2_std_detach.pow(2) )/ (torch.pow(q2_std_detach, 3) +bias)
         #     )*q2_std
         # )
+
         with torch.no_grad():
             # origin_q_loss = 0.5 * (q1_loss + q2_loss).detach()
             # form 0
@@ -369,12 +465,13 @@ class DSACT(AlgorithmBase):
 
         return q1_loss +q2_loss, q1, q2, q1_std, q2_std, origin_q_loss
 
-    def _compute_target_q(self, r, done, q,q_std, q_next, q_next_sample, log_prob_a_next):
+
+    def _compute_target_q(self, r, done, q,q_std, q_next, q_next_sample, log_prob_a_next, smo_next):
         target_q = r + (1 - done) * self.gamma * (
-            q_next - self._get_alpha() * log_prob_a_next
+            q_next - self._get_alpha() * log_prob_a_next - self._get_beta() * smo_next
         )
         target_q_sample = r + (1 - done) * self.gamma * (
-            q_next_sample - self._get_alpha() * log_prob_a_next
+            q_next_sample - self._get_alpha() * log_prob_a_next - self._get_beta() * smo_next
         )
         td_bound = 3 * q_std
         difference = torch.clamp(target_q_sample - q, -td_bound, td_bound)
@@ -386,9 +483,64 @@ class DSACT(AlgorithmBase):
         obs = data.get("raw_obs", obs)
         q1, _, _ = self._q_evaluate(obs, new_act, self.networks.q1)
         q2, _, _ = self._q_evaluate(obs, new_act, self.networks.q2)
+        smo = self._compute_smoothness(obs)
+        data.update({"smo":smo})
+        smooth_penalty = self._get_beta() * smo
         loss_policy = (self._get_alpha() * new_log_prob - torch.min(q1,q2)).mean()
         entropy = -new_log_prob.detach().mean()
-        return loss_policy, entropy
+
+        return loss_policy, entropy, smo.detach().mean(), smooth_penalty.mean()
+    
+    def _compute_smoothness(self, input):
+        if self.beta == 0: # for efficiency
+            # return torch.tensor(0.0, device=input.device)
+            norm = self.real_frobenius_norm(self.networks.policy,input)
+            return norm
+        else:
+            norm = self.real_frobenius_norm(self.networks.policy,input)
+            return norm
+
+
+        
+
+
+
+
+    def random_projection_frobenius_norm(self,network, inputs, num_samples=1):
+        inputs.requires_grad_(True)
+        outputs = network(inputs)
+        frobenius_norm_squared = 0.0
+        for _ in range(num_samples):
+            random_vector = torch.randn_like(outputs)
+            # do not cal the gradient of the network
+            jacobian_vector_product = autograd.grad(outputs, inputs, grad_outputs=random_vector, create_graph=True)[0]
+            dims = list(range(1, inputs.dim()))
+            frobenius_norm_squared += torch.norm(jacobian_vector_product,dim=dims).pow(2)
+        frobenius_norm = torch.sqrt(frobenius_norm_squared / num_samples)
+        return frobenius_norm
+    
+    def real_frobenius_norm(self, network, inputs):
+        inputs.requires_grad_(True)
+        jacobian = vmap(jacrev(network))(inputs)
+        dims = list(range(1, jacobian.dim()))
+        frobenius_norm = torch.norm(jacobian, p=2, dim=dims)
+        # frobenius_norm.mean().backward()
+        return frobenius_norm
+
+
+
+    def finite_difference_frobenius_norm(network, inputs, epsilon=1e-4):
+        inputs.requires_grad_(True)
+        outputs = network(inputs).unsqueeze(1)
+        disturbed_inputs = inputs.clone().unsqueeze(1) + torch.eye(*inputs.size()[1:]).unsqueeze(0) * epsilon
+        disturbed_outputs = network(disturbed_inputs)
+        finite_difference = (disturbed_outputs - outputs) / epsilon
+        dims = list(range(1, finite_difference.dim()))
+        frobenius_norm = torch.norm(finite_difference, p=2, dim=dims)
+        # frobenius_norm.mean().backward()
+        return frobenius_norm
+
+        
 
     def _compute_loss_alpha(self, data: DataDict):
         new_log_prob = data["new_log_prob"]
@@ -397,6 +549,16 @@ class DSACT(AlgorithmBase):
             * (new_log_prob.detach() + self.target_entropy).mean()
         )
         return loss_alpha
+    
+    def _compute_loss_beta(self, data: DataDict):
+        smo = data["smo"]
+        if self.adaptive_method == "rew":
+            loss_beta = -self.networks.log_beta * (-smo.mean().detach()*self._get_beta() +self.smo_ratio*self.mean_rew)
+        elif self.adaptive_method == "norm":
+            loss_beta = -self.networks.log_beta * (-self.cur_smooth_norm +self.smo_ratio*self.policy_norm)
+        else:
+            raise ValueError(f"adaptive method {self.adaptive_method} is not supported")
+        return loss_beta
 
     def _update(self, iteration: int):
         self.networks.q1_optimizer.step()
@@ -407,6 +569,8 @@ class DSACT(AlgorithmBase):
 
             if self.auto_alpha:
                 self.networks.alpha_optimizer.step()
+            if self.auto_beta:
+                self.networks.beta_optimizer.step()
 
             with torch.no_grad():
                 polyak = 1 - self.tau

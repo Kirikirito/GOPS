@@ -51,6 +51,11 @@ class ApprBase(ABC, torch.nn.Module):
                     self.optimizer_dict[key.replace("_scheduler", "")],
                     **scheduler_args[key]["params"],
                 )
+    def freeze(self):
+        for child_module in self.children():
+            if hasattr(child_module, "freeze"):
+                child_module.freeze()
+            
     @property
     def device(self):
         return next(self.parameters()).device

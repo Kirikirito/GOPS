@@ -13,10 +13,10 @@
 from abc import ABCMeta, abstractmethod
 from typing import List, NamedTuple, Tuple, Union
 import time
-
+import os 
 import numpy as np
 import torch
-
+from collections import deque
 from gops.create_pkg.create_env import create_env
 from gops.create_pkg.create_alg import create_approx_contrainer
 from gops.env.vector.vector_env import VectorEnv
@@ -30,10 +30,33 @@ class Experience(NamedTuple):
     action: np.ndarray
     reward: float
     done: bool
+    finished: bool
     info: dict
     next_obs: np.ndarray
     next_info: dict
     logp: float
+
+
+class ObsBuffer:
+    def __init__(self, buffer_size):
+        self.buffer = deque([],maxlen=buffer_size)
+        self.buffer_size = buffer_size
+    def add(self, obs):
+        if not self.is_full():
+            while not self.is_full():
+                self.buffer.append(obs)
+        else:
+            self.buffer.append(obs)
+    def get(self):
+        if self.buffer_size == 1:
+            return self.buffer[0]
+        else:
+            return torch.stack(list(self.buffer), dim=1)
+    def is_full(self):
+        return len(self.buffer) == self.buffer_size
+    def clear(self):
+        self.buffer.clear()
+    
 
 
 class BaseSampler(metaclass=ABCMeta):
@@ -45,6 +68,14 @@ class BaseSampler(metaclass=ABCMeta):
         **kwargs
     ):
         self.env = create_env(**kwargs)
+        self.seq_len = kwargs.get("seq_len", 1)
+        self.freeze_iteration = kwargs.get("freeze_iteration", 0)
+        if self.freeze_iteration > 0:
+            self.seq_len_after_freeze = self.seq_len
+            self.seq_len = 1
+        else:
+            self.seq_len_after_freeze = self.seq_len
+        self.obs_buffer = ObsBuffer(self.seq_len)
         _, self.env = set_seed(kwargs["trainer"], kwargs["seed"], index + 200, self.env)  #? seed here?
         self.networks = create_approx_contrainer(**kwargs)
         if kwargs["use_gpu"]:
@@ -56,6 +87,7 @@ class BaseSampler(metaclass=ABCMeta):
         if isinstance(self.env, VectorEnv):
             self._is_vector = True
             self.num_envs = self.env.num_envs
+            self.running_mean_obs = np.zeros(self.env.observation_space.shape)
             assert self.sample_batch_size % self.num_envs == 0, (
                 "sample_batch_size must be divisible by the number of environments"
             )
@@ -64,6 +96,8 @@ class BaseSampler(metaclass=ABCMeta):
             self._is_vector = False
             self.num_envs = 1
             self.horizon = self.sample_batch_size
+            self.running_mean_obs = np.zeros((1,*self.env.observation_space.shape))
+
         self.action_type = kwargs["action_type"]
         self.reward_scale = 1.0  #? why hard-coded?
         if self.noise_params is not None:
@@ -86,13 +120,21 @@ class BaseSampler(metaclass=ABCMeta):
     def load_state_dict(self, state_dict):
         self.networks.load_state_dict(state_dict)
 
+    def change_mode(self):
+        self.seq_len = self.seq_len_after_freeze
+        self.obs_buffer = ObsBuffer(self.seq_len)
+
+
     def sample(self) -> Tuple[Union[List[Experience], dict], dict]:
         self.total_sample_number += self.sample_batch_size
         tb_info = dict()
         start_time = time.perf_counter()
+        self.networks.eval()
 
-        data = self._sample()
+        data = self._sample(
 
+        )
+        self.networks.train()
         end_time = time.perf_counter()
         tb_info[tb_tags["sampler_time"]] = (end_time - start_time) * 1000
         return data, tb_info
@@ -115,7 +157,8 @@ class BaseSampler(metaclass=ABCMeta):
         
         # t_1 = time.perf_counter_ns()
         with torch.no_grad():
-            logits = self.networks.policy(batch_obs.to(self.device))
+            self.obs_buffer.add(batch_obs)
+            logits = self.networks.policy(self.obs_buffer.get().to(self.device))
             action_distribution = self.networks.create_action_distributions(logits)
             action, logp = action_distribution.sample()
             action = action.cpu()
@@ -167,7 +210,7 @@ class BaseSampler(metaclass=ABCMeta):
             #      unbatched_infos = [{"a": 1, "b": 4}, {"a": 2, "b": 5}, {"a": 3, "b": 6}]
             # ref: https://stackoverflow.com/questions/5558418/list-of-dicts-to-from-dict-of-lists
             unbatched_infos = [dict(zip(next_info, t)) for t in zip(*next_info.values())]
-            
+            unbatched_next_info = unbatched_infos.copy()
             # Get real final info
             if "final_info" in next_info.keys():
                 for i in index:
@@ -178,10 +221,12 @@ class BaseSampler(metaclass=ABCMeta):
             # self.obs = next_obs
             self.info = unbatched_infos
 
+
             return experiences
             
         else:
             next_obs, reward, done, next_info = self.env.step(action_clip)
+            finished = done
 
             # TODO: deprecate this after changing to gymnasium
             if "TimeLimit.truncated" not in next_info.keys():
@@ -194,6 +239,7 @@ class BaseSampler(metaclass=ABCMeta):
                 action=action,
                 reward=self.reward_scale * reward,
                 done=done,
+                finished=finished,
                 info=self.info,
                 next_obs=next_obs.copy(),
                 next_info=next_info,
@@ -204,5 +250,18 @@ class BaseSampler(metaclass=ABCMeta):
             self.info = next_info
             if done or next_info["TimeLimit.truncated"]:
                 self.obs, self.info = self.env.reset()
+                self.obs_buffer.clear()
 
             return [experience]
+        
+
+    def save(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+        # save running mean obs to an csv file
+        np.savetxt(path + "/running_mean_obs.csv"
+                   , self.running_mean_obs.mean(axis=0), delimiter=",")
+
+        
+       
+        

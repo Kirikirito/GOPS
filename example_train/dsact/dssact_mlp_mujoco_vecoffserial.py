@@ -29,8 +29,8 @@ if __name__ == "__main__":
 
     ################################################
     # Key Parameters for users
-    parser.add_argument("--env_id", type=str, default="gym_ant", help="id of environment")
-    parser.add_argument("--algorithm", type=str, default="DSACT", help="RL algorithm")
+    parser.add_argument("--env_id", type=str, default="gym_invertedpendulum", help="id of environment")
+    parser.add_argument("--algorithm", type=str, default="DSSACT", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=False, help="Enable CUDA")
     parser.add_argument("--seed", default=12345, help="Global seed")
     ################################################
@@ -38,6 +38,10 @@ if __name__ == "__main__":
     parser.add_argument("--reward_scale", type=float, default=1, help="reward scale factor")
     parser.add_argument("--is_render", type=bool, default=False, help="Draw environment animation")
     parser.add_argument("--is_adversary", type=bool, default=False, help="Adversary training")
+
+    parser.add_argument("--vector_env_num", type=int, default=4, help="Number of vector envs")
+    parser.add_argument("--vector_env_type", type=str, default='async', help="Options: sync/async")
+    parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymnasium-style")
 
     ################################################
     # 2.1 Parameters of value approximate function
@@ -84,11 +88,20 @@ if __name__ == "__main__":
     parser.add_argument("--value_learning_rate", type=float, default=0.0001)
     parser.add_argument("--policy_learning_rate", type=float, default=0.0001)
     parser.add_argument("--alpha_learning_rate", type=float, default=0.0003)
+    parser.add_argument("--beta_learning_rate", type=float, default=0.0003)
     # special parameter
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--auto_alpha", type=bool, default=True)
     parser.add_argument("--alpha", type=float, default=0.2)
+    parser.add_argument("--beta", type=float, default=0.0)
+    parser.add_argument("--adaptive_method", type=str, default='norm')
+    parser.add_argument("--smooth_q", type=bool, default=False)
+    
+    parser.add_argument("--auto_beta", type=bool, default=False)
+    
+    parser.add_argument("--smo_ratio", type=float, default=0.0)
+
     parser.add_argument("--delay_update", type=int, default=2)
 
     ################################################
@@ -147,7 +160,7 @@ if __name__ == "__main__":
     ################################################
     # Get parameter dictionary
     args = vars(parser.parse_args())
-    env = create_env(**args)
+    env = create_env(**{**args, "vector_env_num": None})
     args = init_args(env, **args)
 
     #start_tensorboard(args["save_folder"])

@@ -10,10 +10,30 @@
 import numpy as np
 import torch
 
+from collections import deque
 from gops.create_pkg.create_env import create_env
 from gops.create_pkg.create_alg import create_approx_contrainer
 from gops.utils.common_utils import set_seed
 
+class ObsBuffer:
+    def __init__(self, buffer_size):
+        self.buffer = deque([],maxlen=buffer_size)
+        self.buffer_size = buffer_size
+    def add(self, obs):
+        if not self.is_full():
+            while not self.is_full():
+                self.buffer.append(obs)
+        else:
+            self.buffer.append(obs)
+    def get(self):
+        if self.buffer_size == 1:
+            return self.buffer[0]
+        else:
+            return torch.stack(list(self.buffer), dim=1)
+    def is_full(self):
+        return len(self.buffer) == self.buffer_size
+    def clear(self):
+        self.buffer.clear()
 
 class Evaluator:
     def __init__(self, index=0, **kwargs):
@@ -25,6 +45,7 @@ class Evaluator:
             "vector_env_num": None,
         })
         self.env = create_env(**kwargs)
+        self.obs_buffer = ObsBuffer(kwargs["seq_len"])
 
         _, self.env = set_seed(kwargs["trainer"], kwargs["seed"], index + 400, self.env)
 
@@ -33,6 +54,7 @@ class Evaluator:
         if self.use_gpu:
             self.networks = self.networks.cuda()
         self.device = self.networks.device
+        self.networks.eval()
         self.render = kwargs["is_render"]
 
         self.num_eval_episode = kwargs["num_eval_episode"]
@@ -59,9 +81,11 @@ class Evaluator:
         obs, info = self.env.reset()
         done = 0
         info["TimeLimit.truncated"] = False
+        self.obs_buffer.clear()
         while not (done or info["TimeLimit.truncated"]):
             batch_obs = torch.from_numpy(np.expand_dims(obs, axis=0).astype("float32"))
-            logits = self.networks.policy(batch_obs.to(self.device))
+            self.obs_buffer.add(batch_obs)
+            logits = self.networks.policy(self.obs_buffer.get().to(self.device))
             action_distribution = self.networks.create_action_distributions(logits)
             action = action_distribution.mode()
             action = action.detach().numpy()[0]

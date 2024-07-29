@@ -93,6 +93,8 @@ def create_env(
     obs_scale: Union[np.ndarray, float, list, None] = None,
     obs_noise_type: Optional[str] = None,
     obs_noise_data: Optional[list] = None,
+    add_to_info: Optional[bool] = False,
+    rel_noise_scale: Optional[bool] = False,
     repeat_num: Optional[int] = None,
     act_seq_len: Optional[int] = None,
     sum_reward: bool = True,
@@ -170,7 +172,7 @@ def create_env(
             env = ShapingRewardData(env, _reward_shift, _reward_scale)
 
         if obs_noise_type is not None:
-            env = NoiseData(env, obs_noise_type, obs_noise_data)
+            env = NoiseData(env, obs_noise_type, obs_noise_data, add_to_info=add_to_info, rel_noise_scale=rel_noise_scale)
 
         if obs_shift is not None or obs_scale is not None:
             _obs_scale = 1.0 if obs_scale is None else obs_scale

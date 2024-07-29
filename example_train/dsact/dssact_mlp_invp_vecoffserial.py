@@ -29,8 +29,8 @@ if __name__ == "__main__":
 
     ################################################
     # Key Parameters for users
-    parser.add_argument("--env_id", type=str, default="gym_ant", help="id of environment")
-    parser.add_argument("--algorithm", type=str, default="DSACT", help="RL algorithm")
+    parser.add_argument("--env_id", type=str, default="gym_invertedpendulum", help="id of environment")
+    parser.add_argument("--algorithm", type=str, default="DSSACT", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=False, help="Enable CUDA")
     parser.add_argument("--seed", default=12345, help="Global seed")
     ################################################
@@ -38,6 +38,10 @@ if __name__ == "__main__":
     parser.add_argument("--reward_scale", type=float, default=1, help="reward scale factor")
     parser.add_argument("--is_render", type=bool, default=False, help="Draw environment animation")
     parser.add_argument("--is_adversary", type=bool, default=False, help="Adversary training")
+
+    parser.add_argument("--vector_env_num", type=int, default=4, help="Number of vector envs")
+    parser.add_argument("--vector_env_type", type=str, default='async', help="Options: sync/async")
+    parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymnasium-style")
 
     ################################################
     # 2.1 Parameters of value approximate function
@@ -49,7 +53,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--value_func_type", type=str, default="MLP", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
     value_func_type = parser.parse_known_args()[0].value_func_type
-    parser.add_argument("--value_hidden_sizes", type=list, default=[256,256,256])
+    parser.add_argument("--value_hidden_sizes", type=list, default=[64,64])
     parser.add_argument(
         "--value_hidden_activation", type=str, default="gelu", help="Options: relu/gelu/elu/selu/sigmoid/tanh"
     )
@@ -72,7 +76,7 @@ if __name__ == "__main__":
         help="Options: default/TanhGaussDistribution/GaussDistribution",
     )
     policy_func_type = parser.parse_known_args()[0].policy_func_type
-    parser.add_argument("--policy_hidden_sizes", type=list, default=[256,256,256])
+    parser.add_argument("--policy_hidden_sizes", type=list, default=[64,64])
     parser.add_argument(
         "--policy_hidden_activation", type=str, default="gelu", help="Options: relu/gelu/elu/selu/sigmoid/tanh"
     )
@@ -81,14 +85,23 @@ if __name__ == "__main__":
 
     ################################################
     # 3. Parameters for RL algorithm
-    parser.add_argument("--value_learning_rate", type=float, default=0.0001)
-    parser.add_argument("--policy_learning_rate", type=float, default=0.0001)
-    parser.add_argument("--alpha_learning_rate", type=float, default=0.0003)
+    parser.add_argument("--value_learning_rate", type=float, default=0.001)
+    parser.add_argument("--policy_learning_rate", type=float, default=0.001)
+    parser.add_argument("--alpha_learning_rate", type=float, default=0.003)
+    parser.add_argument("--beta_learning_rate", type=float, default=0.0003)
     # special parameter
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--auto_alpha", type=bool, default=True)
     parser.add_argument("--alpha", type=float, default=0.2)
+    parser.add_argument("--beta", type=float, default=0.01)
+    parser.add_argument("--adaptive_method", type=str, default='rew')
+    parser.add_argument("--smooth_q", type=bool, default=True)
+    
+    parser.add_argument("--auto_beta", type=bool, default=False)
+    
+    parser.add_argument("--smo_ratio", type=float, default=0.5)
+
     parser.add_argument("--delay_update", type=int, default=2)
 
     ################################################
@@ -100,7 +113,7 @@ if __name__ == "__main__":
         help="Options: on_serial_trainer, on_sync_trainer, off_serial_trainer, off_async_trainer",
     )
     # Maximum iteration number
-    parser.add_argument("--max_iteration", type=int, default=1500000)
+    parser.add_argument("--max_iteration", type=int, default=50000)
     parser.add_argument(
         "--ini_network_dir",
         type=str,
@@ -113,9 +126,9 @@ if __name__ == "__main__":
         "--buffer_name", type=str, default="replay_buffer", help="Options:replay_buffer/prioritized_replay_buffer"
     )
     # Size of collected samples before training
-    parser.add_argument("--buffer_warm_size", type=int, default=10000)
+    parser.add_argument("--buffer_warm_size", type=int, default=5000)
     # Max size of reply buffer
-    parser.add_argument("--buffer_max_size", type=int, default=2*500000)
+    parser.add_argument("--buffer_max_size", type=int, default=2*50000)
     # Batch size of replay samples from buffer
     parser.add_argument("--replay_batch_size", type=int, default=256)
     # Period of sampling
@@ -133,21 +146,21 @@ if __name__ == "__main__":
     # 6. Parameters for evaluator
     parser.add_argument("--evaluator_name", type=str, default="evaluator")
     parser.add_argument("--num_eval_episode", type=int, default=10)
-    parser.add_argument("--eval_interval", type=int, default=2500)
+    parser.add_argument("--eval_interval", type=int, default=500)
     parser.add_argument("--eval_save", type=str, default=False, help="save evaluation data")
 
     ################################################
     # 7. Data savings
     parser.add_argument("--save_folder", type=str, default=None)
     # Save value/policy every N updates
-    parser.add_argument("--apprfunc_save_interval", type=int, default=50000)
+    parser.add_argument("--apprfunc_save_interval", type=int, default=10000)
     # Save key info every N updates
-    parser.add_argument("--log_save_interval", type=int, default=10000)
+    parser.add_argument("--log_save_interval", type=int, default=500)
 
     ################################################
     # Get parameter dictionary
     args = vars(parser.parse_args())
-    env = create_env(**args)
+    env = create_env(**{**args, "vector_env_num": None})
     args = init_args(env, **args)
 
     #start_tensorboard(args["save_folder"])

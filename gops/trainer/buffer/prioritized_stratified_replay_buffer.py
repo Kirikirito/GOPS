@@ -7,6 +7,7 @@ from typing import Tuple
 import numpy as np
 import torch
 from gops.trainer.buffer.prioritized_replay_buffer import PrioritizedReplayBuffer
+from gops.trainer.sampler.base import Experience
 
 __all__ = ["PrioritizedStratifiedReplayBuffer"]
 
@@ -22,29 +23,14 @@ class PrioritizedStratifiedReplayBuffer(PrioritizedReplayBuffer):
 
     def store(
         self,
-        obs: np.ndarray,
-        act: np.ndarray,
-        rew: float,
-        done: bool,
-        info: dict,
-        next_obs: np.ndarray,
-        next_info: dict,
-        logp: np.ndarray,
+        exp: Experience,
     ) -> None:
-        self.buf["obs"][self.ptr] = obs
-        self.buf["obs2"][self.ptr] = next_obs
-        self.buf["act"][self.ptr] = act
-        self.buf["rew"][self.ptr] = rew
-        self.buf["done"][self.ptr] = done
-        self.buf["logp"][self.ptr] = logp
-        for k in self.additional_info.keys():
-            self.buf[k][self.ptr] = info[k]
-            self.buf["next_" + k][self.ptr] = next_info[k]
-        tree_idx = self.ptr + self.max_size - 1
+        super(PrioritizedReplayBuffer, self).store(exp)
+        tree_idx = self.prev_ptr + self.max_size - 1
+        next_info = exp.next_info
         self.sum_tree[tree_idx, :] = np.eye(self.category_num)[next_info["category"], :]
         self.update_tree(tree_idx)
-        self.ptr = (self.ptr + 1) % self.max_size
-        self.size = min(self.size + 1, self.max_size)
+
 
     def add_batch(self, samples: list):
         list(map(lambda sample: self.store(*sample), samples))
@@ -59,6 +45,7 @@ class PrioritizedStratifiedReplayBuffer(PrioritizedReplayBuffer):
             if parent == 0:
                 break
             parent = (parent - 1) // 2
+
 
     def get_leaf(self, value: float) -> Tuple[int, float]:
         parent = 0
@@ -88,21 +75,16 @@ class PrioritizedStratifiedReplayBuffer(PrioritizedReplayBuffer):
         max_weight = (min_prob * self.size) ** (-self.beta)
         
         values = np.random.uniform(np.arange(batch_size) * segment, np.arange(batch_size) * segment + segment)
-        idxes, priorities = zip(*map(self.get_leaf, values))
-        idxes = np.array(idxes, dtype=np.int32)
+        tree_idxes, priorities = zip(*map(self.get_leaf, values))
+        tree_idxes = np.array(tree_idxes, dtype=np.int32)
         priorities = np.array(priorities)
         probs = priorities / self.sum_tree_backup[0]
         weights = (probs * self.size) ** (-self.beta) / max_weight
 
-        batch = {}
-        ptrs = idxes - self.max_size + 1
-        batch["idx"] = torch.as_tensor(idxes, dtype=torch.int32)
+        idxes = tree_idxes - self.max_size + 1
+        batch = self.buf.sample(idxes, self.seq_len)
+        batch["idx"] = torch.as_tensor(tree_idxes, dtype=torch.int32)
         batch["weight"] = torch.as_tensor(weights, dtype=torch.float32)
-        for k, v in self.buf.items():
-            if isinstance(v, np.ndarray):
-                batch[k] = torch.as_tensor(v[ptrs], dtype=torch.float32)
-            else:
-                batch[k] = v[ptrs].array2tensor()
         return batch
 
     def update_batch(self, idxes: int, priorities: float) -> None:
@@ -115,7 +97,6 @@ class PrioritizedStratifiedReplayBuffer(PrioritizedReplayBuffer):
         self.sum_tree[idxes][mask] = priorities
         self.min_tree[idxes] = priorities
         self.max_priority = max(self.max_priority, priorities.max())
-
         list(map(self.update_tree, idxes))
 
     

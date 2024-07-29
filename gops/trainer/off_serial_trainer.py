@@ -47,6 +47,7 @@ class OffSerialTrainer:
         self.last_sampler_network_update_iteration = 0
         self.sampler_network_update_interval = kwargs.get("sampler_network_update_interval", 100)
         self.last_sampler_save_iteration = 0
+        self.networks.eval()
 
         # initialize center network
         if kwargs["ini_network_dir"] is not None:
@@ -54,6 +55,7 @@ class OffSerialTrainer:
 
         self.replay_batch_size = kwargs["replay_batch_size"]
         self.max_iteration = kwargs["max_iteration"]
+        self.freeze_iteration = kwargs.get("freeze_iteration", self.max_iteration +1)
         self.sample_interval = kwargs.get("sample_interval", 1)
         self.log_save_interval = kwargs["log_save_interval"]
         self.apprfunc_save_interval = kwargs["apprfunc_save_interval"]
@@ -80,6 +82,10 @@ class OffSerialTrainer:
         self.total_time = 0
 
     def step(self):
+        # trainning phrase
+        if self.iteration == self.freeze_iteration:
+            self.change_train_phase()
+
         step_start_time = time.time()
 
         # # update sampler networks
@@ -235,6 +241,8 @@ class OffSerialTrainer:
             self.networks.state_dict(),
             self.save_folder + "/apprfunc/apprfunc_{}.pkl".format(self.iteration),
         )
+        self.sampler.save(self.save_folder + "/sampler")
+        
 
     def _add_eval_task(self):
         with torch.no_grad():
@@ -244,8 +252,8 @@ class OffSerialTrainer:
                 self.evaluator,
                 self.evaluator.run_evaluation.remote(self.iteration)
             )
-        self.last_eval_iteration = self.iteration
-    
+        self.last_eval_iteration = self.iteration    
+
     def _add_sample_task(self):
         with torch.no_grad():
             if (self.iteration - self.last_sampler_network_update_iteration) >= self.sampler_network_update_interval:
@@ -255,3 +263,11 @@ class OffSerialTrainer:
                 self.sampler,
                 self.sampler.sample.remote()
             )
+    def change_train_phase(self):
+        #self.networks.policy.freeze()
+        #self.networks.log_alpha.requires_grad = False
+        # self.networks.q1.freeze()
+        # self.networks.q2.freeze()
+        self.buffer.change_mode()
+        self.sampler.change_mode()
+        

@@ -134,10 +134,14 @@ def init_args(env, **args):
     print("Set global seed to {}".format(args["seed"]))
     with open(args["save_folder"] + "/config.json", "w", encoding="utf-8") as f:
         json.dump(change_type(copy.deepcopy(args)), f, ensure_ascii=False, indent=4)
+    if hasattr(env, "additional_info"):
+        args["additional_info"] = env.additional_info
+        for key, value in args["additional_info"].items():
+            args[key+"_dim"] = value["shape"]
+    else:
+        args["additional_info"] = {}
 
-    args["additional_info"] = env.additional_info
-    for key, value in args["additional_info"].items():
-        args[key+"_dim"] = value["shape"]
+    args["seq_len"] = args.get("seq_len", 1)
 
     # Start a new local Ray instance
     # This is necessary since all training scripts use evaluator, which uses ray.

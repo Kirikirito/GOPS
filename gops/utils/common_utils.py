@@ -15,6 +15,7 @@ import os
 import torch.nn as nn
 import numpy as np
 import logging
+import time
 from typing import Optional
 
 from gops.utils.act_distribution_type import *
@@ -47,6 +48,9 @@ def get_activation_func(key: str):
 
     elif key == "linear":
         activation_func = nn.Identity
+    
+    elif key == "softplus":
+        activation_func = nn.Softplus   
 
     if activation_func is None:
         print("input activation name:" + key)
@@ -140,6 +144,14 @@ def get_apprfunc_dict(key: str, **kwargs):
             var["hidden_sizes"] = kwargs[key + "_hidden_sizes"]
             var["hidden_activation"] = kwargs[key + "_hidden_activation"]
             var["output_activation"] = kwargs[key + "_output_activation"]
+    elif apprfunc_type == "SMONET" or apprfunc_type == "SMONET0" or apprfunc_type == "SMONET2" or apprfunc_type == "SMONET3" or apprfunc_type == "SMONET4":
+        var["hidden_sizes"] = kwargs[key + "_hidden_sizes"]
+        var["hidden_activation"] = kwargs[key + "_hidden_activation"]
+        var["output_activation"] = kwargs[key + "_output_activation"]
+        var["kernel_size"] = kwargs[key + "_kernel_size"]
+        var["loss_weight"] = kwargs[key + "_loss_weight"]
+        var["tau_layer_num"] = kwargs["tau_layer_num"]
+        var["seq_len"] = kwargs["seq_len"]
     else:
         raise NotImplementedError
 
@@ -237,6 +249,25 @@ def seed_everything(seed: Optional[int] = None) -> int:
 
     return seed
 
+def cal_ave_exec_time(print_interval=100):
+    def decorator(func):
+        total_time = 0
+        count = 0
+
+        def wrapper(*args, **kwargs):
+            nonlocal total_time, count
+            start_time = time.perf_counter_ns()
+            result = func(*args, **kwargs)
+            end_time = time.perf_counter_ns()
+            execution_time = (end_time - start_time) / 1e6
+            total_time += execution_time
+            count += 1
+            if count % print_interval == 0:
+                print(f"#INFO: {func.__name__}: average execution time after {count} steps: {total_time / count:.9f} ms")
+            return result
+        return wrapper
+    return decorator
+
 
 def set_seed(trainer_name, seed, offset, env=None):
     """
@@ -310,6 +341,23 @@ def get_parameters(modules):
     for module in modules:
         model_parameters += list(module.parameters())
     return model_parameters
+
+class TimePerfRecorder:
+    def __init__(self, context, print_interval=100):
+        self.context = context
+        self.total_time = 0
+        self.count = 0
+        self.print_interval = print_interval
+    def __enter__(self):
+        self.start_time = time.perf_counter_ns() 
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end_time = time.perf_counter_ns()
+        execution_time = (self.end_time - self.start_time) / 1e6
+        self.total_time += execution_time
+        self.count += 1
+        if self.count % self.print_interval == 0:
+            print(f"#INFO: {self.context}: average execution time after {self.count} steps: {self.total_time / self.count:.9f} ms")
 
 
 class ModuleOnDevice:

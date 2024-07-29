@@ -53,6 +53,7 @@ class OnSampler(BaseSampler):
         )
         self.mb_rew = np.zeros((self.num_envs, self.horizon), dtype=np.float32)
         self.mb_done = np.zeros((self.num_envs, self.horizon), dtype=np.bool_)
+        self.mb_finished = np.zeros((self.num_envs, self.horizon), dtype=np.bool_)
         self.mb_tlim = np.zeros((self.num_envs, self.horizon), dtype=np.bool_)
         self.mb_logp = np.zeros((self.num_envs, self.horizon), dtype=np.float32)
         self.need_value_flag = not (alg_name == "FHADP" or alg_name == "INFADP")
@@ -61,6 +62,15 @@ class OnSampler(BaseSampler):
             self.mb_val = np.zeros((self.num_envs, self.horizon), dtype=np.float32)
             self.mb_adv = np.zeros((self.num_envs, self.horizon), dtype=np.float32)
             self.mb_ret = np.zeros((self.num_envs, self.horizon), dtype=np.float32)
+
+        self.seq_len = kwargs.get("seq_len", 1)
+        self.freeze_iteration = kwargs.get("freeze_iteration", 0)
+        if self.freeze_iteration > 0:
+            self.seq_len_after_freeze = self.seq_len
+            self.seq_len = 1
+        else:
+            self.seq_len_after_freeze = self.seq_len
+        self.add_noise = kwargs.get("add_noise", False)
         self.mb_info = {}
         self.info_keys = kwargs["additional_info"].keys()
         for k, v in kwargs["additional_info"].items():
@@ -92,6 +102,7 @@ class OnSampler(BaseSampler):
             "act": torch.from_numpy(self.mb_act.reshape(-1, *self.act_dim)),
             "rew": torch.from_numpy(self.mb_rew.reshape(-1)),
             "done": torch.from_numpy(self.mb_done.reshape(-1)),
+            "finished": torch.from_numpy(self.mb_finished.reshape(-1)),
             "logp": torch.from_numpy(self.mb_logp.reshape(-1)),
             "time_limited": torch.from_numpy(self.mb_tlim.reshape(-1)),
         }
@@ -103,6 +114,49 @@ class OnSampler(BaseSampler):
         for k, v in self.mb_info.items():
             mb_data[k] = torch.from_numpy(v.reshape(-1, *v.shape[2:]))
         return mb_data
+    def reprocess_samples(self, data):
+        if self.seq_len == 1:
+            mb_data = {
+            "obs": torch.from_numpy(self.mb_obs.reshape(-1, *self.obs_dim)),
+            "act": torch.from_numpy(self.mb_act.reshape(-1, *self.act_dim)),
+            "rew": torch.from_numpy(self.mb_rew.reshape(-1)),
+            "done": torch.from_numpy(self.mb_done.reshape(-1)),
+            "finished": torch.from_numpy(self.mb_finished.reshape(-1)),
+            "logp": torch.from_numpy(self.mb_logp.reshape(-1)),
+            "time_limited": torch.from_numpy(self.mb_tlim.reshape(-1)),
+        }
+        else:
+            obs_seq = np.stack([self.mb_obs[:, i:i+self.seq_len, ...] for i in range(self.horizon - self.seq_len + 1)], axis=1)
+            obs2_seq = np.stack([self.mb_obs[:, i:i+self.seq_len, ...] for i in range(1, self.horizon - self.seq_len + 2)], axis=1)
+            unconti_idx = np.where(self.mb_finished)
+            for i in range(self.seq_len):
+                rel_unconti_idx = np.clip(unconti_idx- i, 0, self.horizon-self.seq_len) 
+                obs_seq[rel_unconti_idx, i:] = self.mb_obs[unconti_idx]
+            
+            mb_data = {
+                "obs": torch.from_numpy(obs_seq.reshape(-1, self.seq_len, *self.obs_dim)),
+                "act": torch.from_numpy(self.mb_act.reshape(-1, *self.act_dim)),
+                "rew": torch.from_numpy(self.mb_rew.reshape(-1)),
+                "done": torch.from_numpy(self.mb_done.reshape(-1)),
+                "finished": torch.from_numpy(self.mb_finished.reshape(-1)),
+                "logp": torch.from_numpy(self.mb_logp.reshape(-1)),
+                "time_limited": torch.from_numpy(self.mb_tlim.reshape(-1)),
+            }
+        if self.need_value_flag:    
+            mb_data.update({
+                "ret": torch.from_numpy(self.mb_ret.reshape(-1)),   
+                "adv": torch.from_numpy(self.mb_adv.reshape(-1)),
+            })
+        for k, v in self.mb_info.items():
+            mb_data[k] = torch.from_numpy(v.reshape(-1, *v.shape[2:]))
+        return mb_data
+
+    def _prev_idx(self, idxes: np.ndarray) -> np.ndarray:
+        prev_idxes = (idxes - 1)
+        prev_idxes = np.maximum(prev_idxes, 0)
+        finished = self.mb_finished[prev_idxes]
+        prev_idxes = (prev_idxes + 1 * finished)
+        return prev_idxes
 
     def sample_with_replay_format(self):
         return self.sample()
@@ -122,7 +176,8 @@ class OnSampler(BaseSampler):
                 obs, 
                 action, 
                 reward, 
-                done, 
+                done,
+                finished, 
                 info, 
                 next_obs, 
                 next_info, 
@@ -134,6 +189,7 @@ class OnSampler(BaseSampler):
                 self.mb_act[i, t, ...],
                 self.mb_rew[i, t],
                 self.mb_done[i, t],
+                self.mb_finished[i, t],
                 self.mb_tlim[i, t],
                 self.mb_logp[i, t],
             ) = (
@@ -141,6 +197,7 @@ class OnSampler(BaseSampler):
                 action,
                 reward,
                 done,
+                finished,
                 next_info["TimeLimit.truncated"],
                 logp,
             )
@@ -151,8 +208,7 @@ class OnSampler(BaseSampler):
 
             # calculate value target (mb_ret) & gae (mb_adv)
             if (
-                done
-                or next_info["TimeLimit.truncated"]
+                finished
                 or t == self.horizon - 1
             ) and self.need_value_flag:
                 last_obs_expand = torch.from_numpy(
@@ -167,7 +223,7 @@ class OnSampler(BaseSampler):
 
     def _finish_trajs(self, env_index: int, est_last_val: float):
         # calculate value target (mb_ret) & gae (mb_adv) whenever episode is finished
-        path_slice = slice(self.last_ptr[env_index], self.ptr[env_index] + 1)
+        path_slice = slice(self.last_ptr[env_index] + 1, self.ptr[env_index] + 1)
         value_preds_slice = np.append(self.mb_val[env_index, path_slice], est_last_val)
         rews_slice = self.mb_rew[env_index, path_slice]
         length = len(rews_slice)

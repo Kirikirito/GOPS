@@ -16,6 +16,7 @@ __all__ = [
     "DetermPolicy",
     "FiniteHorizonPolicy",
     "FiniteHorizonFullPolicy",
+    "MultiplierNet",
     "StochaPolicy",
     "ActionValue",
     "ActionValueDis",
@@ -111,6 +112,32 @@ class FiniteHorizonPolicy(nn.Module, Action_Distribution):
         return action
 
 
+class MultiplierNet(nn.Module, Action_Distribution):
+    """
+    Approximated function of deterministic policy for finite-horizon.
+    Input: observation, time step.
+    Output: action.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        obs_dim = kwargs["obs_dim"] + 1
+        hidden_sizes = kwargs["hidden_sizes"]
+
+        pi_sizes = [obs_dim] + list(hidden_sizes) + [1]
+        self.pi = mlp(
+            pi_sizes,
+            get_activation_func(kwargs["hidden_activation"]),
+            get_activation_func(kwargs["output_activation"]),
+        )
+
+    def forward(self, obs, virtual_t=1):
+        virtual_t = virtual_t * torch.ones(
+            size=[obs.shape[0], 1], dtype=torch.float32, device=obs.device
+        )
+        expand_obs = torch.cat((obs, virtual_t), 1)
+        multiplier = self.pi(expand_obs)
+        return multiplier
 class FiniteHorizonFullPolicy(nn.Module, Action_Distribution):
     """
     Approximated function of deterministic policy for finite-horizon.

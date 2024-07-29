@@ -22,6 +22,7 @@ import torch
 import pandas as pd
 from gym import wrappers
 from copy import copy
+from collections import deque
 
 from gops.create_pkg.create_alg import create_approx_contrainer
 from gops.create_pkg.create_env_model import create_env_model
@@ -170,6 +171,8 @@ class PolicyRunner:
         is_opt: bool,
         render: bool = True,
     ) -> Tuple[dict, dict]:
+        seq_len = self.args.get("seq_len_test", 1)
+        self.obs_buffer = ObsBuffer(seq_len)
         state_list = []
         action_list = []
         reward_list = []
@@ -223,7 +226,8 @@ class PolicyRunner:
                         )
             next_obs, reward, done, info = env.step(action)
 
-            action_list.append(action)
+            # save the real action (without scaling)
+            action_list.append(info.get("raw_action", action))
             step_list.append(step)
             reward_list.append(reward)
             info_list.append(info)
@@ -260,7 +264,9 @@ class PolicyRunner:
 
     def compute_action(self, obs: np.ndarray, networks: Any) -> np.ndarray:
         batch_obs = torch.from_numpy(np.expand_dims(obs, axis=0).astype("float32"))
-        logits = networks.policy(batch_obs)
+        self.obs_buffer.add(batch_obs)
+        logits = networks.policy(self.obs_buffer.get())
+        # logits = networks.policy(batch_obs)
         action_distribution = networks.create_action_distributions(logits)
         action = action_distribution.mode()
         action = action.detach().numpy()[0]
@@ -786,7 +792,7 @@ class PolicyRunner:
             self.env_id_list.append(env_id)
             self.algorithm_list.append(args["algorithm"])
 
-    def __load_env(self, use_opt: bool = False):
+    def __load_env(self,idx = 0, use_opt: bool = False):
         if use_opt:
             env = create_env(**self.args)
         else:
@@ -796,6 +802,8 @@ class PolicyRunner:
                 "obs_noise_data": self.obs_noise_data,
                 "action_noise_type": self.action_noise_type,
                 "action_noise_data": self.action_noise_data,
+                "rel_noise_scale": False,
+                "add_to_info": False,
             }
             env = create_env(**env_args)
         if self.save_render:
@@ -803,7 +811,7 @@ class PolicyRunner:
             if use_opt:
                 name_prefix = "{}_video".format(self.opt_args["opt_controller_type"])
             else:
-                name_prefix = "{}_video".format(self.args["algorithm"])
+                name_prefix = "{}_video".format(self.legend_list[idx])
             env = wrappers.RecordVideo(env, video_path, name_prefix=name_prefix)
         self.args["action_high_limit"] = env.action_space.high
         self.args["action_low_limit"] = env.action_space.low
@@ -839,7 +847,7 @@ class PolicyRunner:
             self.args = self.args_list[i]
             print("===========================================================")
             print("*** Begin to run policy {} ***".format(i + 1))
-            env = self.__load_env()
+            env = self.__load_env(i)
             if hasattr(env, "set_mode"):
                 env.set_mode("test")
 
@@ -978,3 +986,24 @@ def get_reference_from_info(info: dict) -> np.ndarray:
         return state.context_state.reference[0]
     elif isinstance(state, np.ndarray):
         return info["ref"]
+
+
+class ObsBuffer:
+    def __init__(self, buffer_size):
+        self.buffer = deque([],maxlen=buffer_size)
+        self.buffer_size = buffer_size
+    def add(self, obs):
+        if not self.is_full():
+            while not self.is_full():
+                self.buffer.append(obs)
+        else:
+            self.buffer.append(obs)
+    def get(self):
+        if self.buffer_size == 1:
+            return self.buffer[0]
+        else:
+            return torch.stack(list(self.buffer), dim=1)
+    def is_full(self):
+        return len(self.buffer) == self.buffer_size
+    def clear(self):
+        self.buffer.clear()
