@@ -43,6 +43,7 @@ class Evaluator:
             "act_seq_len": 1,
             "gym2gymnasium": False,
             "vector_env_num": None,
+            "obs_noise_type": None,
         })
         self.env = create_env(**kwargs)
         self.obs_buffer = ObsBuffer(kwargs.get("seq_len", 1)) # for backward compatibility

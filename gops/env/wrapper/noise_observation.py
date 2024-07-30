@@ -125,10 +125,11 @@ class NoiseData(gym.Wrapper):
         return obs_noised, r, d, info
 
     def seed(self, seed=None):
+        seeds = self.env.seed(seed)  # NOTE: must first seed env before seeding np_random
         np_random, _ = seeding.np_random(seed)
         noise_seed = int(np_random.randint(2 ** 31))
         self.np_random, noise_seed = seeding.np_random(noise_seed)
-        seeds = self.env.seed(seed)
+
         return seeds
 
     @property

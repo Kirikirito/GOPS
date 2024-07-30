@@ -14,13 +14,13 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_multilane_exp_0729_1' 
-exp_discription = 'based on exp 0704_1_9, no repeat num, '
+exp_name = 'idsim_multilane_exp_0729_2_ablation' 
+exp_discription = 'reduce to exp 0704_1_9, only change gamma and action repeat'
 
 
 script_folder = "dsac"
 algs = ['dsact']
-apprfuncs = ['pi','pismonet']
+apprfuncs = ['pi']
 envs = ['idsim_multilane_vec']
 repeats_num = 1
 surfix_filter = 'offserial.py'

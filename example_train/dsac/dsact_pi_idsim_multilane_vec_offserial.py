@@ -60,8 +60,8 @@ if __name__ == "__main__":
     parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymnasium-style")
 
     parser.add_argument("--ego_scale", type=list, default=[1, 20, 20, 1, 4, 1, 4] ) #  vx, vy, r, last_last_acc, last_last_steer, last_acc, last_steer
-    parser.add_argument("--sur_scale", type=list, default=[0.2, 1, 4, 4, 1, 1, 1, 1] ) #  rel_x, rel_y , cos(phi), sin(phi), speed, length, width, mask
-    parser.add_argument("--ref_scale", type=list, default=[0.2, 1, 4, 4, 1] ) # ref_x ref_y ref_cos(ref_phi) ref_sin(ref_phi), error_v
+    parser.add_argument("--sur_scale", type=list, default=[0.2, 1, 1, 10, 1, 1, 1, 1] ) #  rel_x, rel_y , cos(phi), sin(phi), speed, length, width, mask
+    parser.add_argument("--ref_scale", type=list, default=[0.2, 1, 1, 10, 1] ) # ref_x ref_y ref_cos(ref_phi) ref_sin(ref_phi), error_v
     ego_scale = parser.parse_known_args()[0].ego_scale
     sur_scale = parser.parse_known_args()[0].sur_scale
     ref_scale = parser.parse_known_args()[0].ref_scale
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     parser.add_argument("--obj_dim", type=int, default=pi_paras["obj_dim"])
     parser.add_argument("--head_num", type=int, default=8)
     parser.add_argument("--pi_out_dim", type=int, default= 256)
-    parser.add_argument("--pi_hidden_sizes", type=list, default=[256,256,256])
+    parser.add_argument("--pi_hidden_sizes", type=list, default=[256,256])
     parser.add_argument("--pi_hidden_activation", type=str, default="gelu")
     parser.add_argument("--pi_output_activation", type=str, default="gelu")
     parser.add_argument("--freeze_pi_net", type=str, default="none")
@@ -188,7 +188,7 @@ if __name__ == "__main__":
     parser.add_argument("--alpha_learning_rate", type=float, default=3e-4)
 
     # special parameter
-    parser.add_argument("--gamma", type=float, default=0.975)
+    parser.add_argument("--gamma", type=float, default=0.90)
     parser.add_argument("--tau", type=float, default=0.001)
     parser.add_argument("--auto_alpha", type=bool, default=True)
     parser.add_argument("--alpha", type=bool, default=0.2)

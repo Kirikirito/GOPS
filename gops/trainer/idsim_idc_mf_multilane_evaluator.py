@@ -98,6 +98,7 @@ class IdsimIDCEvaluator(Evaluator):
             "act_seq_len": 1,
             "gym2gymnasium": False,
             "vector_env_num": None,
+            "obs_noise_type": None,
         })
         self.kwargs = kwargs
         # update env_config in kwargs
