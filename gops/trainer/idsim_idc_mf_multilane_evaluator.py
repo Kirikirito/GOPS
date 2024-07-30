@@ -21,6 +21,7 @@ from gops.create_pkg.create_env_model import create_env_model
 from gops.env.env_gen_ocp.pyth_base import (Context, ContextState, Env, State, stateType)
 from gops.env.env_gen_ocp.pyth_idsim import idSimEnv, get_idsimcontext, idSimContextState
 from gops.env.env_gen_ocp.env_model.pyth_idsim_model import idSimEnvModel
+from gops.trainer.evaluator import ObsBuffer
 
 
 from idsim_model.model_context import BaseContext
@@ -122,6 +123,7 @@ class IdsimIDCEvaluator(Evaluator):
         self.eval_save = self.kwargs.get("eval_save", True)
         self.save_folder = self.kwargs["save_folder"]
         self.use_mpc = False
+        self.obs_buffer = ObsBuffer(kwargs.get("seq_len", 1)) # for backward compatibility
 
         if kwargs["ini_network_dir"] is not None:
             self.networks.load_state_dict(
@@ -321,6 +323,7 @@ class IdsimIDCEvaluator(Evaluator):
         
         done = 0
         info["TimeLimit.truncated"] = False
+        self.obs_buffer.clear()
 
         # if self.IDC_MODE:  # IDC mode may extremely slow down the evaluation
         if self.env.scenario == "multilane":
@@ -388,7 +391,8 @@ class IdsimIDCEvaluator(Evaluator):
                 scaled_obs = raw_obs
 
             # ----------- get action ------------
-            logits = self.networks.policy(scaled_obs)
+            self.obs_buffer.add(scaled_obs)
+            logits = self.networks.policy(self.obs_buffer.get())
             action_distribution = self.networks.create_action_distributions(logits)
             action = action_distribution.mode()
             # entropy = action_distribution.entropy()

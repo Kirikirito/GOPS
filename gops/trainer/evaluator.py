@@ -45,7 +45,7 @@ class Evaluator:
             "vector_env_num": None,
         })
         self.env = create_env(**kwargs)
-        self.obs_buffer = ObsBuffer(kwargs["seq_len"])
+        self.obs_buffer = ObsBuffer(kwargs.get("seq_len", 1)) # for backward compatibility
 
         _, self.env = set_seed(kwargs["trainer"], kwargs["seed"], index + 400, self.env)
 
