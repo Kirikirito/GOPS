@@ -422,8 +422,8 @@ class StochaPolicy(nn.Module, Action_Distribution):
             if obs.dim() == 3: #FIXME: dynamic control flow
                 seq_len = obs.shape[1]
                 bath_size = obs.shape[0]
-                obs = obs.view(-1, self.obs_dim)
-                encoding = self.pi_net(obs).view(bath_size, seq_len, -1)
+                flat_obs = obs.view(-1, self.obs_dim)
+                encoding = self.pi_net(flat_obs).view(bath_size, seq_len, -1)
             else:
                 encoding = self.pi_net(obs) 
         if self.std_type == "mlp_separated":
@@ -514,8 +514,8 @@ class ActionValue(nn.Module, Action_Distribution):
             if obs.dim() == 3: #FIXME: dynamic control flow
                 seq_len = obs.shape[1]
                 bath_size = obs.shape[0]
-                obs = obs.view(-1, self.obs_dim)
-                encoding = self.pi_net(obs).view(bath_size, seq_len, -1)
+                flat_obs = obs.view(-1, self.obs_dim)
+                encoding = self.pi_net(flat_obs).view(bath_size, seq_len, -1)
             else:
                 encoding = self.pi_net(obs) 
         expand_act = act.unsqueeze(-2).expand(-1, obs.shape[-2],-1) # (batch_size, seq_len, obs_dim)
@@ -596,8 +596,8 @@ class ActionValueDistri(nn.Module):
             if obs.dim() == 3: #FIXME: dynamic control flow
                 seq_len = obs.shape[1]
                 bath_size = obs.shape[0]
-                obs = obs.view(-1, self.obs_dim)
-                encoding = self.pi_net(obs).view(bath_size, seq_len, -1)
+                flat_obs = obs.view(-1, self.obs_dim)
+                encoding = self.pi_net(flat_obs).view(bath_size, seq_len, -1)
             else:
                 encoding = self.pi_net(obs) 
         if obs.dim() == 3:

@@ -73,7 +73,7 @@ if __name__ == "__main__":
         env_model_config=base_env_model_config
     )
     parser.add_argument("--obs_scale", type=dict, default=obs_scale)
-    parser.add_argument("--repeat_num", type=int, default=4, help="action repeat num")
+    parser.add_argument("--repeat_num", type=int, default=1, help="action repeat num")
 
     parser.add_argument("--algorithm", type=str, default="DSACTPI", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=True, help="Enable CUDA")
@@ -188,7 +188,7 @@ if __name__ == "__main__":
     parser.add_argument("--alpha_learning_rate", type=float, default=3e-4)
 
     # special parameter
-    parser.add_argument("--gamma", type=float, default=0.90)
+    parser.add_argument("--gamma", type=float, default=0.975)
     parser.add_argument("--tau", type=float, default=0.001)
     parser.add_argument("--auto_alpha", type=bool, default=True)
     parser.add_argument("--alpha", type=bool, default=0.2)
