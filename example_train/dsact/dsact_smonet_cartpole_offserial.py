@@ -98,7 +98,7 @@ if __name__ == "__main__":
     parser.add_argument("--policy_max_log_std", type=int, default=0.5)
 
     parser.add_argument("--policy_kernel_size", type=int,nargs='+', default= [1,8,1], help="kernel size for each layer")
-    parser.add_argument("--policy_loss_weight", type=float, default=0.01, help="tau decay factor")
+    parser.add_argument("--policy_loss_weight", type=float, default=0.001, help="tau decay factor")
 
     ################################################
     # 3. Parameters for RL algorithm

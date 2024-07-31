@@ -104,9 +104,11 @@ class AlgorithmBase(metaclass=ABCMeta):
         self.networks.load_state_dict(state_dict)
 
     def local_update(self, data: dict, iteration: int) -> dict:
+        self.networks.train()
         tb_info = self._local_update(data, iteration)
         for key, scheduler in self.networks.scheduler_dict.items():
             scheduler.step()
+        self.networks.eval()
         return tb_info
 
     def remote_update(self, update_info: dict):

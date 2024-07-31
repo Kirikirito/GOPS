@@ -73,7 +73,7 @@ if __name__ == "__main__":
         env_model_config=base_env_model_config
     )
     parser.add_argument("--obs_scale", type=dict, default=obs_scale)
-    parser.add_argument("--repeat_num", type=int, default=1, help="action repeat num")
+    parser.add_argument("--repeat_num", type=int, default=4, help="action repeat num")
 
     parser.add_argument("--algorithm", type=str, default="DSACTPI", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=True, help="Enable CUDA")
