@@ -14,13 +14,13 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_multilane_exp_0714_3' 
-exp_discription = 'based on last exp and multilane exp, no dobule reward, new map from lvyao'
+exp_name = 'idsim_multilane_exp_0802_fixbug' 
+exp_discription = 'based on 0714_3 exp  no smooth punish, fix bug of backward hock'
 
 
 script_folder = "dsac"
 algs = ['dsact']
-apprfuncs = ['pi']
+apprfuncs = ['pismonet']
 envs = ['idsim_cross_vec']
 repeats_num = 1
 surfix_filter = 'offserial.py'
@@ -39,7 +39,7 @@ run_config = {
 project_root = None
 save_meta_data = True
 save_zip = True
-max_subprocess = 1
+max_subprocess = 2
 max_waiting_time = 48 * 3600  # seconds
 log_level = 'DEBUG'
 

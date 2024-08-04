@@ -192,7 +192,7 @@ class DSACTPI(AlgorithmBase):
                 return alpha.item()
         else:
             return self.alpha
-    @torch.compile
+    #  @torch.compile  NOTE: backward hook is not supported by torch.compile so far do not use it
     def __compute_gradient(self, data: DataDict, iteration: int):
         start_time = time.time()
 
