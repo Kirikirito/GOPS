@@ -179,11 +179,12 @@ class ReplayBuffer:
             self.seq_len = 1
         else:
             self.seq_len_after_freeze = self.seq_len
+        self.enable_noise = False
         self.add_noise = kwargs.get("add_noise", False)
         self.buf = BufferData(self.max_size,self.vec_env_num, self.obsv_dim, self.act_dim, kwargs["additional_info"])
 
     def change_mode(self):
-        self.add_noise = True
+        self.enable_noise = self.add_noise
         self.seq_len = self.seq_len_after_freeze
 
     def __len__(self):
@@ -213,7 +214,7 @@ class ReplayBuffer:
 
     def sample_batch(self, batch_size: int) -> dict:
         idxes = np.random.randint(0, len(self), size=batch_size)
-        batch = self.buf.sample(idxes, batch_size, self.seq_len, add_noise = self.add_noise)
+        batch = self.buf.sample(idxes, batch_size, self.seq_len, add_noise = self.enable_noise)
         return batch
 
     def sample_statistic(self, iteration, batch_size: int = 1024) -> dict:

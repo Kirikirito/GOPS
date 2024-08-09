@@ -14,7 +14,7 @@
 #  Update: 2021-03-05, Ziqing Gu: create DSAC algorithm
 #  Update: 2021-03-05, Wenxuan Wang: debug DSAC algorithm
 
-__all__=["ApproxContainer","DSACT"]
+__all__=["ApproxContainer","DSACTR"]
 import time
 from copy import deepcopy
 from typing import Tuple
@@ -24,7 +24,7 @@ import torch.nn as nn
 from torch.distributions import Normal
 from torch.optim import Adam
 from torch.nn.functional import huber_loss
-from copy import deepcopy
+
 from gops.algorithm.base import AlgorithmBase, ApprBase
 from gops.create_pkg.create_apprfunc import create_apprfunc
 from gops.utils.tensorboard_setup import tb_tags
@@ -83,7 +83,7 @@ class ApproxContainer(ApprBase):
         return self.policy.get_act_dist(logits)
 
 
-class DSACT(AlgorithmBase):
+class DSACTR(AlgorithmBase):
     """DSAC algorithm with three refinements, higher performance and more stable.
 
     Paper: https://arxiv.org/abs/2310.05858
@@ -111,11 +111,6 @@ class DSACT(AlgorithmBase):
         self.tau_b = kwargs.get("tau_b", self.tau)
         self.rec1 = TimePerfRecorder("backward_q",print_interval=100)
         self.rec2 = TimePerfRecorder("backward_policy",print_interval=100)
-        self.use_adapter = kwargs.get("policy_adapter_layers", None) is not None
-        self._enable_adapter = False
-        self.consider_last_act = kwargs.get("policy_consid_last_act", False)
-        self.apapter_loss_weight = kwargs.get("policy_adapter_loss_weight", 0.01)
-        self.max_perf_decrease = 0.05
 
     @property
     def adjustable_parameters(self):
@@ -177,11 +172,7 @@ class DSACT(AlgorithmBase):
 
     def _compute_gradient(self, data: DataDict, iteration: int):
         start_time = time.time()
-        if self.use_adapter and self.consider_last_act:
-            last_act = data["act"] + torch.randn_like(data["act"]) * 0.2  # TODO: add to config 
-            #NOTE: better to use real last act
-            self.networks.policy.set_last_act(last_act)
-            data.update({"last_act": last_act})
+
         obs = data["obs"]
         logits = self.networks.policy(obs)
         logits_mean, logits_std = torch.chunk(logits, chunks=2, dim=-1)
@@ -190,8 +181,7 @@ class DSACT(AlgorithmBase):
 
         act_dist = self.networks.create_action_distributions(logits)
         new_act, new_log_prob = act_dist.rsample()
-        new_act_mean = act_dist.mode()
-        data.update({"new_act": new_act, "new_log_prob": new_log_prob, "new_act_mean": new_act_mean})
+        data.update({"new_act": new_act, "new_log_prob": new_log_prob})
 
         self.networks.q1_optimizer.zero_grad()
         self.networks.q2_optimizer.zero_grad()
@@ -256,8 +246,6 @@ class DSACT(AlgorithmBase):
         noise_obs2 = obs2
         obs = data.get("raw_obs", obs)
         obs2 = data.get("raw_obs2", obs2)
-        if self.use_adapter and self.consider_last_act:
-            self.networks.policy_target.set_last_act(data["new_act"])
         logits_2 = self.networks.policy_target(noise_obs2)
         act2_dist = self.networks.create_action_distributions(logits_2)
         act2, log_prob_act2 = act2_dist.rsample()
@@ -399,47 +387,8 @@ class DSACT(AlgorithmBase):
         q1, _, _ = self._q_evaluate(obs, new_act, self.networks.q1)
         q2, _, _ = self._q_evaluate(obs, new_act, self.networks.q2)
         loss_policy = (self._get_alpha() * new_log_prob - torch.min(q1,q2)).mean()
-        if self.use_adapter and self._enable_adapter:
-            q = torch.min(q1, q2)
-            q1_freeze, _, _ = self._q_evaluate(obs, new_act, self.freeze_q1)
-            q2_freeze, _, _ = self._q_evaluate(obs, new_act, self.freeze_q2)
-            q_freeze = torch.min(q1_freeze, q2_freeze)
-            adapter_loss = self._compute_loss_adapter(data, q_freeze, q)
-            loss_policy += adapter_loss
-
         entropy = -new_log_prob.detach().mean()
         return loss_policy, entropy
-    def _compute_loss_adapter(self, data: DataDict, q_freeze, q):
-        adapter_loss = 0
-        last_act = data["last_act"]
-        if self.consider_last_act:
-            self.networks.policy.set_last_act(last_act)
-            
-        obs = data["obs"]
-        obs = data.get("raw_obs", obs)
-        rel_q_decrease = (q_freeze - q) / q_freeze.abs().clamp(min=1e-6).detach()
-        rel_loss_weight = self.apapter_loss_weight*(1 - torch.cos(torch.pi/2*(1- (rel_q_decrease/self.max_perf_decrease).clamp(min=0, max=1)))).unsqueeze(-1)
-        if self.consider_last_act:
-            new_act_mean = data["new_act_mean"]
-            self.networks.policy.set_last_act(last_act)
-            temporal_smooth_loss = torch.mean(rel_loss_weight*(new_act_mean - last_act).pow(2))
-            adapter_loss += temporal_smooth_loss
-        delta = 1e-7 + torch.randn_like(obs) * 1e-6  # B, 2D
-        delta_norm = torch.norm(delta, dim=-1, p=2)
-        noised_obs = obs + delta
-        logits = self.networks.policy(noised_obs)
-        noised_act_dist = self.networks.create_action_distributions(logits)
-        noised_act_mean = noised_act_dist.mode()
-        #print('norm_mean',norm.mean())
-        #print('norm_max',norm.max())
-
-        # jacobi = (out2 - out1) / delta
-        # norm = torch.norm(jacobi[:,0,:self.act_dim], dim=-1, p=1).mean()
-        norm= (torch.norm((new_act_mean - noised_act_mean), dim=-1, p=1)/delta_norm)
-        spatial_smooth_loss = torch.mean(rel_loss_weight*norm)
-        adapter_loss += spatial_smooth_loss
-        return adapter_loss
-        
 
     def _compute_loss_alpha(self, data: DataDict):
         new_log_prob = data["new_log_prob"]
@@ -448,7 +397,6 @@ class DSACT(AlgorithmBase):
             * (new_log_prob.detach() + self.target_entropy).mean()
         )
         return loss_alpha
-    
 
     def _update(self, iteration: int):
         self.networks.q1_optimizer.step()
@@ -478,14 +426,3 @@ class DSACT(AlgorithmBase):
                 ):
                     p_targ.data.mul_(polyak)
                     p_targ.data.add_((1 - polyak) * p.data)
-
-    def change_mode(self):
-        if self.use_adapter:
-            self._enable_adapter = True
-            self.networks.policy.enable_adapter()
-            self.freeze_q1 = deepcopy(self.networks.q1)
-            self.freeze_q2 = deepcopy(self.networks.q2)
-            for p in self.freeze_q1.parameters():
-                p.requires_grad = False
-            for p in self.freeze_q2.parameters():
-                p.requires_grad = False

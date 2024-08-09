@@ -98,7 +98,8 @@ class IdsimIDCEvaluator(Evaluator):
             "act_seq_len": 1,
             "gym2gymnasium": False,
             "vector_env_num": None,
-            "obs_noise_type": None,
+            # "obs_noise_type": None,
+            "add_to_info": False,
         })
         self.kwargs = kwargs
         # update env_config in kwargs
@@ -390,6 +391,10 @@ class IdsimIDCEvaluator(Evaluator):
                 scaled_obs = self.env.observation(raw_obs)
             else:
                 scaled_obs = raw_obs
+            
+            if self.kwargs.get('obs_noise_data') is not None:  # NOTE: A temporary solution for obs noise
+                scaled_obs,_ = self.env.noise_observation(scaled_obs)
+                scaled_obs = torch.tensor(scaled_obs).float()
 
             # ----------- get action ------------
             self.obs_buffer.add(scaled_obs)

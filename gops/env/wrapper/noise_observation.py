@@ -74,7 +74,7 @@ class NoiseData(gym.Wrapper):
         self.record_step_info = record_step_info
         self._step = 0
 
-    def observation(self, observation):
+    def noise_observation(self, observation):
         if self.rel_noise_scale:
             delta_obs = np.abs(observation - self.prev_obs)
             self.prev_obs = observation
@@ -105,10 +105,11 @@ class NoiseData(gym.Wrapper):
         self._step = 0
         if self.rel_noise_scale:
             self.prev_obs = obs
-        obs_noised, noise = self.observation(obs)
+        obs_noised, noise = self.noise_observation(obs)
         if self.add_to_info:
             info["noise"] = noise
-            info["running_mean_obs"] = self.running_mean_delta_obs
+            if self.rel_noise_scale:
+                info["running_mean_obs"] = self.running_mean_delta_obs
         if self.record_step_info:
             info["step"] = self._step
             self._step += 1
@@ -116,7 +117,7 @@ class NoiseData(gym.Wrapper):
 
     def step(self, action: ActType) -> Tuple[ObsType, float, bool, dict]:
         obs, r, d, info = self.env.step(action)
-        obs_noised, noise = self.observation(obs)
+        obs_noised, noise = self.noise_observation(obs)
         if self.add_to_info:
             info["noise"] = noise
         if self.record_step_info:
@@ -139,7 +140,7 @@ class NoiseData(gym.Wrapper):
         else:
             env_info = self.env.additional_info
         if self.add_to_info:
-            noise_sample = self.observation(self.env.observation_space.sample())[1]
+            noise_sample = self.noise_observation(self.env.observation_space.sample())[1]
             env_info["noise"] = {"shape": noise_sample.shape, "dtype": noise_sample.dtype}
         if self.record_step_info:
             env_info["step"] = {"shape": (1,), "dtype": np.int32}

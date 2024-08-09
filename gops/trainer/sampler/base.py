@@ -116,6 +116,8 @@ class BaseSampler(metaclass=ABCMeta):
             #      unbatched_infos = [{"a": 1, "b": 4}, {"a": 2, "b": 5}, {"a": 3, "b": 6}]
             # ref: https://stackoverflow.com/questions/5558418/list-of-dicts-to-from-dict-of-lists
             self.info = [dict(zip(self.info, t)) for t in zip(*self.info.values())] if self.info else [{}] * self.num_envs
+        self.consider_last_act = kwargs.get("policy_consid_last_act", False)
+        self.use_adapter = kwargs.get("policy_adapter_layers", None) is not None
 
     def load_state_dict(self, state_dict):
         self.networks.load_state_dict(state_dict)
@@ -123,6 +125,8 @@ class BaseSampler(metaclass=ABCMeta):
     def change_mode(self):
         self.seq_len = self.seq_len_after_freeze
         self.obs_buffer = ObsBuffer(self.seq_len)
+        if self.use_adapter:
+            self.networks.policy.enable_adapter()
 
 
     def sample(self) -> Tuple[Union[List[Experience], dict], dict]:
@@ -204,6 +208,9 @@ class BaseSampler(metaclass=ABCMeta):
                 # get the index where next_info["_final_observation"] is True
                 index = np.where(next_info["_final_observation"])[0]
                 next_obs[index, :] = np.stack(next_info["final_observation"][index])
+                if self.consider_last_act and self.use_adapter:
+                    self.networks.policy.reset_last_act(index)
+                    # print("reset last act")
                 
             
             # convert a dict of batched data to a list of dicts of unbatched data
@@ -252,6 +259,8 @@ class BaseSampler(metaclass=ABCMeta):
             if done or next_info["TimeLimit.truncated"]:
                 self.obs, self.info = self.env.reset()
                 self.obs_buffer.clear()
+                if self.consider_last_act:
+                    self.policy.reset_last_act(0)
 
             return [experience]
         

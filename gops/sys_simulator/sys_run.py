@@ -820,6 +820,11 @@ class PolicyRunner:
     def __load_policy(self, log_policy_dir: str, trained_policy_iteration: str):
         # Create policy
         networks = create_approx_contrainer(**self.args)
+        if self.args["policy_func_type"] == "MLPA":
+            print("GOPS: Use AMLP policy")
+            if int(trained_policy_iteration) > self.args["freeze_iteration"]:
+                networks.policy.enable_adapter()
+                print("GOPS: Enable adapter") # HACK: for AMLP
 
         # Load trained policy
         log_path = log_policy_dir + "/apprfunc/apprfunc_{}.pkl".format(

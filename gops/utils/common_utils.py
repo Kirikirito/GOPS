@@ -183,6 +183,15 @@ def get_apprfunc_dict(key: str, **kwargs):
             var["loss_weight"] = kwargs[key + "_loss_weight"]
             var["tau_layer_num"] = kwargs["tau_layer_num"]
             var["seq_len"] = kwargs["seq_len"]
+    elif apprfunc_type == "MLPA":
+        var["hidden_sizes"] = kwargs[key + "_hidden_sizes"]
+        var["hidden_activation"] = kwargs[key + "_hidden_activation"]
+        var["output_activation"] = kwargs[key + "_output_activation"]
+        var["adapter_layers"] = kwargs[key + "_adapter_layers"]
+        var["consid_last_act"] = kwargs[key + "_consid_last_act"]
+        var["adapter_start_layer"] = kwargs[key + "_adapter_start_layer"]
+        var["adapter_add_bias"] = kwargs[key + "_adapter_add_bias"]
+        var["adaption_ratio"] = kwargs[key + "_adaption_ratio"]
     else:
         raise NotImplementedError
 

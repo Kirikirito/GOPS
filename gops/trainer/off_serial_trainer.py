@@ -63,6 +63,7 @@ class OffSerialTrainer:
         self.best_tar = -inf
         self.save_folder = kwargs["save_folder"]
         self.iteration = 0
+        self.use_adapter = kwargs.get("policy_adapter_layers", None) is not None
 
         self.writer = SummaryWriter(log_dir=self.save_folder, flush_secs=20)
         # flush tensorboard at the beginning
@@ -260,4 +261,8 @@ class OffSerialTrainer:
         # self.networks.q2.freeze()
         self.buffer.change_mode()
         self.sampler.change_mode.remote()
+        if self.use_adapter:
+            self.networks.policy.enable_adapter()
+            self.alg.change_mode()
+
         
