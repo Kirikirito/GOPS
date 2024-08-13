@@ -343,11 +343,11 @@ class DSACTPI(AlgorithmBase):
         
 
         # form5
-        q1_loss = torch.mean(ratio1 *(huber_loss(q1, target_q1, delta = 50, reduction='none') 
-                                      + q1_std *(q1_std_detach.pow(2) - huber_loss(q1.detach(), target_q1_bound, delta = 50, reduction='none'))/(q1_std_detach +bias)
+        q1_loss = torch.mean(ratio1 *(2*huber_loss(q1, target_q1, delta = 50, reduction='none') 
+                                      + q1_std *(q1_std_detach.pow(2) - 2*huber_loss(q1.detach(), target_q1_bound, delta = 50, reduction='none'))/(q1_std_detach +bias)
                             ))
-        q2_loss = torch.mean(ratio2 *(huber_loss(q2, target_q2, delta = 50, reduction='none')
-                                      + q2_std *(q2_std_detach.pow(2) - huber_loss(q2.detach(), target_q2_bound, delta = 50, reduction='none'))/(q2_std_detach +bias)
+        q2_loss = torch.mean(ratio2 *(2*huber_loss(q2, target_q2, delta = 50, reduction='none')
+                                      + q2_std *(q2_std_detach.pow(2) - 2*huber_loss(q2.detach(), target_q2_bound, delta = 50, reduction='none'))/(q2_std_detach +bias)
                             ))
 
         # q1_loss = torch.mean(ratio1 * ((q1 - target_q1).pow(2) + torch.log(q1_std +bias) -q1_std * (q1.detach() - target_q1_bound).pow(2) / (q1_std_detach + bias)))
@@ -366,11 +366,11 @@ class DSACTPI(AlgorithmBase):
         # )
         with torch.no_grad():
             # only Q mean loss 
-            origin_q1_loss = torch.mean(ratio1 *(huber_loss(q1, target_q1, delta = 50, reduction='none')
+            origin_q1_loss = torch.mean(ratio1 *(2*huber_loss(q1, target_q1, delta = 50, reduction='none')
                                       )
                             )
             
-            origin_q2_loss = torch.mean(ratio2 *(huber_loss(q2, target_q2, delta = 30, reduction='none')
+            origin_q2_loss = torch.mean(ratio2 *(2*huber_loss(q2, target_q2, delta = 50, reduction='none')
                                       )
                             )   
             origin_q_loss = origin_q1_loss + origin_q2_loss
