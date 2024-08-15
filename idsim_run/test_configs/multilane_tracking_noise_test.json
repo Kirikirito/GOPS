@@ -1,0 +1,103 @@
+{
+    "render_only": false,
+    "scenario": "multilane",
+    "num_scenarios": 34,
+    "scenario_reuse": 1,
+    "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v2/",
+    "ini_network_root": "/root/gops/gops/idsim",
+    "test_case_file": "/root/gops/exp/test_case_training_ml.json",
+    "test_filter": null,
+    "nn_index": null,
+    "dpi": 60,
+    "frame_skip": 3,
+    "tracking_only": true,
+    "noise_type": null,
+    "noise_data": null,
+    "rel_noise_scale": false,
+    "test_name": "tracking_only_test",
+    "scenario_filter_surrounding_selector": null,
+    "direction_selector": "s",
+    "IDC_mode": false,
+    "fast_mode": false,
+    "multi_ref": true,
+    "plot_reward": false,
+    "random_ref_probability": 0.01,
+    "path_selector": "value",
+    "selector_bias": -2.5,
+    "max_steps": 2000,
+    "no_done_at_collision": true,
+    "takeover_bias": false,
+    "bias_x": [
+        0.0,
+        0.5
+    ],
+    "bias_y": [
+        0.0,
+        0.5
+    ],
+    "bias_phi": [
+        0.0,
+        0.05
+    ],
+    "bias_vx": [
+        0.0,
+        1.5
+    ],
+    "bias_ax": [
+        0.0,
+        0.25
+    ],
+    "bias_steer": [
+        0.0,
+        0.02
+    ],
+    "minimum_clearance_when_takeover": 5.0,
+    "random_ref_v": false,
+    "ref_v_range": [
+        0,
+        2
+    ],
+    "ref_v": 12,
+    "use_random_acc": false,
+    "random_acc_prob": [
+        0.3,
+        0.3,
+        1
+    ],
+    "random_acc_cooldown": [
+        50,
+        50,
+        50
+    ],
+    "random_acc_range": [
+        0.2,
+        0.8
+    ],
+    "random_dec_range": [
+        0.2,
+        0.8
+    ],
+    "sur_bias_range": [
+        0,
+        0
+    ],
+    "sur_bias_prob": 0.0,
+    "Q_mat": [
+        0.0,
+        0.0,
+        0.0,
+        0.5,
+        0.0,
+        0.0
+    ],
+    "R_mat": [
+        0.0,
+        0.0
+    ],
+    "C_acc_rate_1": 0.0,
+    "C_steer_rate_1": 0.0,
+    "C_steer_rate_2": [
+        0.0,
+        0.0
+    ]
+}

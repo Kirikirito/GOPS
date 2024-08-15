@@ -68,7 +68,7 @@ if __name__ == "__main__":
         help="Options: None/DetermPolicy/FiniteHorizonPolicy/StochaPolicy",
     )
     parser.add_argument(
-        "--policy_func_type", type=str, default="MLPA", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS"
+        "--policy_func_type", type=str, default="MLP", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS"
     )
     parser.add_argument(
         "--policy_act_distribution",
@@ -78,12 +78,12 @@ if __name__ == "__main__":
     )
     policy_func_type = parser.parse_known_args()[0].policy_func_type
     parser.add_argument("--policy_hidden_sizes", type=list, default=[256,256])
-    parser.add_argument("--policy_adapter_layers", type=list, default=[64,64])
-    parser.add_argument("--policy_consid_last_act", type=bool, default=True)
-    parser.add_argument("--policy_adapter_loss_weight", type=float, default=0.1)
-    parser.add_argument("--policy_adapter_start_layer", type=int, default=0)
-    parser.add_argument("--policy_adapter_add_bias", type=bool, default=True)
-    parser.add_argument("--policy_adaption_ratio", type=float, default=0.2)
+    # parser.add_argument("--policy_adapter_layers", type=list, default=[64,64])
+    # parser.add_argument("--policy_consid_last_act", type=bool, default=True)
+    # parser.add_argument("--policy_adapter_loss_weight", type=float, default=0.1)
+    # parser.add_argument("--policy_adapter_start_layer", type=int, default=0)
+    # parser.add_argument("--policy_adapter_add_bias", type=bool, default=True)
+    # parser.add_argument("--policy_adaption_ratio", type=float, default=0.2)
 
     parser.add_argument(
         "--policy_hidden_activation", type=str, default="gelu", help="Options: relu/gelu/elu/selu/sigmoid/tanh"
@@ -112,8 +112,8 @@ if __name__ == "__main__":
         help="Options: on_serial_trainer, on_sync_trainer, off_serial_trainer, off_async_trainer",
     )
     # Maximum iteration number
-    parser.add_argument("--max_iteration", type=int, default=10000)
-    parser.add_argument("--freeze_iteration", type=int, default=5000)
+    parser.add_argument("--max_iteration", type=int, default=100000)
+    # parser.add_argument("--freeze_iteration", type=int, default=5000)
     parser.add_argument(
         "--ini_network_dir",
         type=str,

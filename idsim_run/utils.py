@@ -6,14 +6,17 @@ import json
 import pickle
 import torch
 import re
+import seaborn as sns
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import multiprocessing
 from dataclasses import dataclass
 from typing import NamedTuple, Optional
 from multiprocessing import Pool
 
 from gops.trainer.idsim_idc_mf_multilane_evaluator import (
-    IdsimIDCEvaluator,
+    IdsimIDCEvaluator, EvalResult,
     get_args_from_json,
 )
 from gops.trainer.idsim_render.animation_mf_multilane import AnimationLane
@@ -80,7 +83,50 @@ def multi_parallel_eval(configs_dict_list, config_file_path= None):
     pool.close()
     pool.join()
     print("All test cases are done.")
-    print("test case results: ", test_case_results)
+    smo_dict_list = []
+    for idx, args,config_dict, test_case_list, log_path_root in zip(range(len(args_list)), args_list,configs_dict_list, test_case_lists, log_path_roots):
+        smo_dict = {}
+        smo_dict["network"] = config_dict["ini_network_root"]
+        smo_dict["iteration"] = config_dict["nn_index"]
+        for idx, test_case in enumerate(test_case_list):
+            smo_dict.update(cal_action_smoothness(idx, test_case, log_path_root))
+            smo_dict["noise_data"] = args["obs_noise_data"]
+            smo_dict["noise_type"] = args["obs_noise_type"]
+            smo_dict["noise_level"]= config_dict["obs_noise_level"]
+            smo_dict_list.append(smo_dict)
+    plot_smoothness(smo_dict_list)
+    return smo_dict_list
+
+def plot_smoothness(smo_dict_list):
+    smo_df = pd.DataFrame(smo_dict_list)
+    for network_root in smo_df["network"].unique():
+        network_df = smo_df[smo_df["network"] == network_root]
+        title = f"{network_root.split('/')[-2]}_smoothness"
+        plt.figure()
+        sns.lineplot(data=network_df, x="noise_level", y="real_afr", hue="iteration")
+        plt.title(f"{title} real afr")
+        plt.savefig(f"{network_root}_real_afr.png")
+        plt.figure()
+        sns.lineplot(data=network_df, x="noise_level", y="real_sdv", hue="iteration")
+        plt.title(f"{title} real sdv")
+        plt.savefig(f"{network_root}_real_sdv.png")
+        plt.figure()
+        sns.lineplot(data=network_df, x="noise_level", y="real_mwf", hue="iteration")
+        plt.title(f"{title} real mwf")
+        plt.savefig(f"{network_root}_real_mwf.png")
+        plt.figure()
+        sns.lineplot(data=network_df, x="noise_level", y="inc_afr", hue="iteration")
+        plt.title(f"{title} inc afr")
+        plt.savefig(f"{network_root}_inc_afr.png")
+        plt.figure()
+        sns.lineplot(data=network_df, x="noise_level", y="inc_sdv", hue="iteration")
+        plt.title(f"{title} inc sdv")
+        plt.savefig(f"{network_root}_inc_sdv.png")
+        plt.figure()
+        sns.lineplot(data=network_df, x="noise_level", y="inc_mwf", hue="iteration")
+        plt.title(f"{title} inc mwf")
+        plt.savefig(f"{network_root}_inc_mwf.png")
+
 
 def combine_conf(test_conf, conf_list):
     test_conf_list = []
@@ -91,6 +137,7 @@ def combine_conf(test_conf, conf_list):
             test_conf_copy["nn_index"] = nn_index
             test_conf_copy["noise_data"] = noise
             test_conf_copy["test_name"] = test_conf["test_name"] + "_" + nn_index + "_noise_level_" + str(idx)
+            test_conf_copy["obs_noise_level"] = idx
             test_conf_list.append(test_conf_copy)
     return test_conf_list
 
@@ -222,7 +269,7 @@ def generate_animation(args, idx, test_case, config, log_path_root, theme_style)
     animation.generate_animation(episode_data, log_path_root, idx, test_scene=test_scene, mode="debug", dpi=args["dpi"], frame_skip=args["frame_skip"], plot_reward=args["plot_reward"])
 
 
-def get_episode_data(idx, test_case, log_path_root):
+def get_episode_data(idx, test_case, log_path_root) -> EvalResult:
     map_id = int(test_case["map_id"])
     suffix = "%03d" % map_id
     log_path = log_path_root / f"test_{idx}" / suffix
@@ -241,9 +288,58 @@ def get_episode_data(idx, test_case, log_path_root):
         episode_data = pickle.load(f)
     return episode_data
 
+def cal_action_smoothness(idx, test_case, log_path_root):
+    episode_data = get_episode_data(idx, test_case, log_path_root)
+    action_seq = episode_data.action_real_list
+    afr = cal_afr(action_seq)
+    sdv = cal_sdv(action_seq)
+    mwf = cal_mwf(action_seq)
+    print(f"Test case", test_case)
+    print(f"real action smoothness: afr: {afr}, sdv: {sdv}, mwf: {mwf}")
+    inc_action_seq = episode_data.action_list
+    inc_afr = cal_afr(inc_action_seq)
+    inc_sdv = cal_sdv(inc_action_seq)
+    inc_mwf = cal_mwf(inc_action_seq)
+    print(f"inc action smoothness: afr: {inc_afr}, sdv: {inc_sdv}, mwf: {inc_mwf}")
+    smo_dict = {"real_afr": afr, "real_sdv": sdv, "real_mwf": mwf, "inc_afr": inc_afr, "inc_sdv": inc_sdv, "inc_mwf": inc_mwf}
+    return smo_dict
 
+def cal_afr(action_seq):
+    action_seq = np.array(action_seq)
+    daction_seq = action_seq[1:] - action_seq[:-1]
+    afr = np.linalg.norm(daction_seq, axis=1).mean()
+    return afr
 
+def cal_sdv(action_seq):
+    # calculate the second derivative variation
+    action_seq = np.array(action_seq)
+    daction_seq = action_seq[1:] - action_seq[:-1]
+    ddaction_seq = daction_seq[1:] - daction_seq[:-1]
+    sdv = np.linalg.norm(ddaction_seq, axis=1).mean()
+    return sdv
 
+def cal_mwf(action_seq):
+# mean of the weighted frequency
+    action_seq = np.array(action_seq)
+    N = len(action_seq)
+    dim = action_seq.shape[1]
+    # sample spacing
+    T = 0.1
+    top = 0
+    mwf = 0
+    for i in range(dim):
+        y = action_seq[:,i]
+        yf = np.fft.fft(y)
+        xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
+        # remove first top points
+        if top > 0:
+            yf[:top] = 0
+        # print("remove the five points with the highest amplitude")
+        weighted_yf = np.sum(xf[top:N//2]*np.abs(yf[top:N//2]))/(np.sum(np.abs(yf[top:N//2]))+1e-8)
+        avg_amp = np.sum(np.abs(yf[top:N//2]))/(N//2-top)
+        mwf += weighted_yf
+    mwf = mwf/dim
+    return mwf
 @dataclass
 class EvalConf:
     render_only: bool = False
@@ -262,6 +358,7 @@ class EvalConf:
     noise_type: Optional[str] = None
     noise_data: Optional[list] = None
     rel_noise_scale: bool = False
+    obs_noise_level: int = 0    # noise level for the test case
     test_name: str = 'test'
     scenario_filter_surrounding_selector: Optional[str] = None
     direction_selector: str = 's'
@@ -386,6 +483,7 @@ def get_args(configs_dict, config_file_path= None):
     args["PATH_SELECTION_DIFF_THRESHOLD"] = conf.selector_bias
     args["frame_skip"] =    conf.frame_skip
     args["dpi"] = conf.dpi
+    args["nn_index"] = conf.nn_index # NOTE: not in the config.json
     args["ini_network_root"] = conf.ini_network_root
     args["ini_network_dir"] = conf.ini_network_root + f"/apprfunc/apprfunc_{conf.nn_index}.pkl"
     args["obs_noise_type"] = conf.noise_type

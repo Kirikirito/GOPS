@@ -1,0 +1,124 @@
+[
+    {
+        "iteration": 495000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "0",
+        "seed": 778939979,
+        "traffic_seed": 154521256,
+        "ego_id": "58",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    },
+
+
+    {
+        "iteration": 520000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "2",
+        "seed": 994854038,
+        "traffic_seed": 971477673,
+        "ego_id": "30",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    },
+    {
+        "iteration": 540000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "0",
+        "seed": 14004018,
+        "traffic_seed": 465672696,
+        "ego_id": "33",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    },
+    {
+        "iteration": 580000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "2",
+        "seed": 267628186,
+        "traffic_seed": 603580138,
+        "ego_id": "63",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    },
+    {
+        "iteration": 595000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "0",
+        "seed": 929483406,
+        "traffic_seed": 666453211,
+        "ego_id": "101",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    },
+    {
+        "iteration": 470000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "2",
+        "seed": 227424770,
+        "traffic_seed": 593196523,
+        "ego_id": "99",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    },
+    {
+        "iteration": 470000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "1",
+        "seed": 613662392,
+        "traffic_seed": 94843769,
+        "ego_id": "89",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    },
+    {
+        "iteration": 490000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "0",
+        "seed": 342641790,
+        "traffic_seed": 414158469,
+        "ego_id": "83",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    },
+    {
+        "iteration": 25000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "6",
+        "seed": 767705648,
+        "traffic_seed": 813458534,
+        "ego_id": "31",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 40000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "5",
+        "seed": 997868866,
+        "traffic_seed": 827795022,
+        "ego_id": "55",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 40000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "20",
+        "seed": 293961716,
+        "traffic_seed": 838735928,
+        "ego_id": "84",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    },
+    {
+        "iteration": 125000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "20",
+        "seed": 925929246,
+        "traffic_seed": 9368470,
+        "ego_id": "98",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    }
+]
