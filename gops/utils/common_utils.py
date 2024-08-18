@@ -126,6 +126,7 @@ def get_apprfunc_dict(key: str, **kwargs):
             var["pi_out_dim"] = kwargs["pi_out_dim"]
             var["encoding_others"] = kwargs["encoding_others"]
             var["enable_self_attention"] = kwargs["enable_self_attention"]
+            var["use_multi_head"] = kwargs.get("use_multi_head", False)
             var["head_num"] = kwargs.get("head_num", None)
             var["attn_dim"] = kwargs.get("attn_dim", None)
             if var["encoding_others"]:
@@ -161,6 +162,7 @@ def get_apprfunc_dict(key: str, **kwargs):
             var["pi_out_dim"] = kwargs["pi_out_dim"]
             var["encoding_others"] = kwargs["encoding_others"]
             var["enable_self_attention"] = kwargs["enable_self_attention"]
+            var["use_multi_head"] = kwargs.get("use_multi_head", False)
             var["head_num"] = kwargs.get("head_num", None)
             var["attn_dim"] = kwargs.get("attn_dim", None)
             if var["encoding_others"]:

@@ -129,7 +129,7 @@ class IdsimIDCEvaluator(Evaluator):
 
         if kwargs["ini_network_dir"] is not None:
             self.networks.load_state_dict(
-                torch.load(self.kwargs["ini_network_dir"]))
+                torch.load(self.kwargs["ini_network_dir"]), strict=False)
     
     def idc_decision(self,
                      idc_env_info: Tuple,

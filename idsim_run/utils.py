@@ -508,6 +508,7 @@ def get_args(configs_dict, config_file_path= None):
     args["env_config"]["takeover_bias_steer"] = conf.bias_steer
     args["env_config"]["minimum_clearance_when_takeover"] = conf.minimum_clearance_when_takeover
 
+    args["env_config"]["add_sur_bias"] = conf.sur_bias_prob > 0
     args["env_config"]["sur_bias_range"] = conf.sur_bias_range
     args["env_config"]["sur_bias_prob"] = conf.sur_bias_prob
 
