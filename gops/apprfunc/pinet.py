@@ -44,6 +44,24 @@ def init_weights(m):
         if m.bias is not None:
             m.bias.data.zero_()
 
+
+class MultiHeadProj(nn.Module):
+    def __init__(self, d_model, head_num, head_dim, obj_num):
+        super().__init__()
+        self.d_model = d_model
+        self.head_num = head_num
+        self.head_dim = head_dim
+        self.obj_num = obj_num
+        self.projs = nn.ModuleList(
+            [nn.Linear(head_dim, head_dim) for _ in range(head_num)])
+        
+    def forward(self, embeddings):
+        # embeddings: [B, N, d_model]
+        embeddings = embeddings.reshape(-1, self.obj_num, self.head_num, self.head_dim) # [B, N, head_num, head_dim]
+        proj_value = [proj(embeddings[:,:, i]) for i, proj in enumerate(self.projs)]
+        proj_value = torch.stack(proj_value, dim=2) # [B, N, head_num, head_dim]
+        return proj_value
+
 class PINet(nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
@@ -54,6 +72,7 @@ class PINet(nn.Module):
         self.enable_mask = kwargs["enable_mask"]
         self.d_obj = kwargs["obj_dim"]
         self.enable_self_attention = kwargs.get("enable_self_attention", False)
+        self.use_multi_head = kwargs.get("use_multi_head", False) # for backward compatibility
         assert self.d_encodings % self.d_obj == 0
         self.num_objs = int(self.d_encodings / self.d_obj)
         if self.enable_mask:
@@ -108,8 +127,12 @@ class PINet(nn.Module):
                 self.head_dim = head_dim
                 self.head_num = head_num
                 self.Wq =  nn.Linear(self.others_out_dim, head_dim*head_num)
-                self.Wk =  nn.Linear(head_dim, head_dim)
-                self.Wv =  nn.Linear(head_dim, head_dim)
+                if self.use_multi_head:
+                    self.Wk =  MultiHeadProj(embedding_dim, head_num, head_dim, self.num_objs)
+                    self.Wv =  MultiHeadProj(embedding_dim, head_num, head_dim, self.num_objs)
+                else:   
+                    self.Wk =  nn.Linear(head_dim, head_dim) # BUG: only for backward compatibility the code is wrong
+                    self.Wv =  nn.Linear(head_dim, head_dim)
             self.attn_weights = None 
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
@@ -128,17 +151,20 @@ class PINet(nn.Module):
         embeddings = self.pi(objs)*mask.unsqueeze(-1) # [B, N, d_model]
 
         if self.enable_self_attention:
-            query = self.Wq(others).reshape(-1,1,self.head_num, self.head_dim) # [B, 1 head_num, head_dim]
-            reshaped_embeddings = embeddings.reshape(-1, self.num_objs, self.head_num, self.head_dim) # [B, N, head_num, head_dim]
-            key = self.Wk(reshaped_embeddings) # [B, N, head_num, head_dim]
-            value = self.Wv(reshaped_embeddings) # [B, N, head_num, head_dim]
+            query = self.Wq(others).reshape(-1,self.head_num,1, self.head_dim) # [B, head_num, 1, head_dim]
+            if self.use_multi_head:
+                key = self.Wk(embeddings) # [B, N, head_num, head_dim]
+                value = self.Wv(embeddings) # [B, N, head_num, head_dim]
+            else:
+                reshaped_embeddings = embeddings.reshape(-1, self.num_objs, self.head_num, self.head_dim) # [B, N, head_num, head_dim]
+                key = self.Wk(reshaped_embeddings) # [B, N, head_num, head_dim]
+                value = self.Wv(reshaped_embeddings) # [B, N, head_num, head_dim]
             value = value*mask.unsqueeze(-1).unsqueeze(-1) # [B, N, head_num, head_dim]
             # logits = torch.einsum("nqhd,nkhd->nhqk", [query, key]) / np.sqrt(self.embedding_dim) # [B, head_num, 1, N] donot use einsum
-            query = query.permute(0, 2, 1, 3)  #  [B, head_num, 1, head_dim]
-            key = key.permute(0, 2, 1, 3)  # 形状变为  [B, head_num, seq_len, head_dim]
+            key = key.permute(0, 2, 1, 3)  # 形状变为  [B, head_num, N, head_dim]
 
             # 进行矩阵乘法
-            logits = torch.matmul(query, key.transpose(-2, -1))  # 形状变为 [batch_size, num_heads, 1, seq_len]
+            logits = torch.matmul(query, key.transpose(-2, -1))  # 形状变为 [B, head_num, 1, N]
 
             # 缩放
             logits = logits / np.sqrt(self.embedding_dim)  # head_dim 即 self.embedding_dim
@@ -146,7 +172,7 @@ class PINet(nn.Module):
             attn_weights = torch.softmax(logits, axis=-1) # [B, head_num, 1, N]
             # embeddings = torch.einsum("nhqk,nkhd->nqhd", [attn_weights, value]).reshape(-1, self.embedding_dim) # [B, d_model]
             attn_p = attn_weights
-            value_p = value.permute(0, 2, 1, 3)
+            value_p = value.permute(0, 2, 1, 3) # [B, head_num, N, head_dim]
             embeddings = torch.matmul(attn_p, value_p).reshape(-1, self.embedding_dim) # [B, d_model]
             self.attn_weights = attn_weights.squeeze(2).sum(1)/self.head_num
 
@@ -310,6 +336,12 @@ class ActionValue(nn.Module, Action_Distribution):
             get_activation_func(kwargs["output_activation"]),
         )
         self.action_distribution_cls = kwargs["action_distribution_cls"]
+        rew_comp_dim = kwargs["additional_info"]["reward_comps"]["shape"][0]
+        self.rew_pred_head = mlp(
+            [input_dim] +[64]+ [rew_comp_dim],
+            get_activation_func(kwargs["hidden_activation"]),
+            get_activation_func(kwargs["output_activation"]),
+        )
 
     def shared_paras(self):
         return self.pi_net.parameters()
@@ -322,7 +354,10 @@ class ActionValue(nn.Module, Action_Distribution):
             encoding = self.pi_net(obs)
         q = self.q(torch.cat([encoding, act], dim=-1))
         return torch.squeeze(q, -1)
-
+    
+    def predict_reward(self, obs, act):
+        encoding = self.pi_net(obs)
+        return self.rew_pred_head(torch.cat([encoding, act], dim=-1))
 
 class ActionValueDis(nn.Module, Action_Distribution):
     """
@@ -370,6 +405,17 @@ class ActionValueDistri(nn.Module):
             raise NotImplementedError
         if "min_log_std"  in kwargs or "max_log_std" in kwargs:
             warnings.warn("min_log_std and max_log_std are deprecated in ActionValueDistri.")
+        if kwargs.get("additional_info") is None:
+            pass
+        elif kwargs["additional_info"].get("reward_comps") is None:
+            pass
+        else:        
+            rew_comp_dim = kwargs["additional_info"]["reward_comps"]["shape"][0]
+            self.rew_pred_head = mlp(
+                [input_dim] +[64]+ [rew_comp_dim],
+                get_activation_func(kwargs["hidden_activation"]),
+                get_activation_func(kwargs["output_activation"]),
+            )
 
     def shared_paras(self):
         return self.pi_net.parameters()
@@ -391,6 +437,10 @@ class ActionValueDistri(nn.Module):
             value_std = torch.nn.functional.softplus(self.q_std(torch.cat([encoding, act], dim=-1)))
 
         return torch.cat((value_mean, value_std), dim=-1)
+    
+    def predict_reward(self, obs, act):
+        encoding = self.pi_net(obs)
+        return self.rew_pred_head(torch.cat([encoding, act], dim=-1))
     
 
 
