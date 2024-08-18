@@ -14,13 +14,13 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_multilane_exp_0802_fixbug_big_loss_weight_punish' 
-exp_discription = 'based on 0714_3 exp  no smooth punish, fix bug of backward hock loss weight 1e-2'
+exp_name = 'idsim_cross_exp_0811' 
+exp_discription = 'based on 0714_3 exp  add smooth punish, fix bug of backward hock and dsact std loss'
 
 
 script_folder = "dsac"
 algs = ['dsact']
-apprfuncs = ['pismonet']
+apprfuncs = ['pismonet', 'pi']
 envs = ['idsim_cross_vec']
 repeats_num = 1
 surfix_filter = 'offserial.py'

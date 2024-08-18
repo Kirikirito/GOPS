@@ -132,6 +132,7 @@ if __name__ == "__main__":
     pi_paras = cal_idsim_pi_paras(env_config=base_env_config, env_model_config=base_env_model_config)
     parser.add_argument("--target_PI", type=bool, default=True)
     parser.add_argument("--enable_self_attention", type=bool, default=True)
+    parser.add_argument("--use_multi_head", type=bool, default=True)
     parser.add_argument("--pi_begin", type=int, default=pi_paras["pi_begin"])
     parser.add_argument("--pi_end", type=int, default=pi_paras["pi_end"])
     parser.add_argument("--enable_mask", type=bool, default=True)
