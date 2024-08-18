@@ -218,13 +218,15 @@ class idSimEnv(CrossRoad, Env):
     @property
     def additional_info(self) -> dict:
         info = super().additional_info
-        info.update({
-            "reward_comps":{
-                "shape":(len(self._reward_comp_list),), 
-                "dtype":np.float32
-            }
+        info = {}
+        if len(self._reward_comp_list) > 0:
+            info.update({
+                "reward_comps":{
+                    "shape":(len(self._reward_comp_list),), 
+                    "dtype":np.float32
+                }
         })
-        return {}
+        return info
     
     def _get_obs(self) -> np.ndarray:
         idsim_context = get_idsimcontext(

@@ -210,7 +210,7 @@ class DSACTPI(AlgorithmBase):
         self.networks.q2_optimizer.zero_grad()
         self.networks.policy_optimizer.zero_grad()
         self.networks.pi_optimizer.zero_grad()
-        loss_q, q1, q2, std1, std2, origin_q_loss, idx, td_err  = self.__compute_loss_q(data)
+        loss_q, q1, q2, std1, std2, origin_q_loss, idx, td_err, rew_loss  = self.__compute_loss_q(data)
         if loss_q.requires_grad:
             loss_q.backward() 
 
@@ -254,6 +254,7 @@ class DSACTPI(AlgorithmBase):
             "DSAC2/policy_grad_norm": policy_grad_norm.item(),
             "DSAC2/pi_grad_norm": pi_grad_norm.item(),
             tb_tags["alg_time"]: (time.time() - start_time) * 1000,
+            "DSAC2/rew_loss": rew_loss.item() if rew_loss is not None else 0,
         }
         if self.per_flag:
             return tb_info, idx, td_err
@@ -393,7 +394,16 @@ class DSACTPI(AlgorithmBase):
             idx = None
             per = None
 
-        return q1_loss + q2_loss, q1, q2, q1_std, q2_std, origin_q_loss, idx, per
+        if data.get("reward_comps", None) is not None:  
+            rew_comps = data["reward_comps"]
+            rew_pred = self.networks.q1.predict_reward(obs, act)
+            rew_loss = torch.mean((rew_pred - rew_comps) ** 2)
+            q1_loss += rew_loss
+        else:
+            rew_loss = None
+
+
+        return q1_loss + q2_loss, q1, q2, q1_std, q2_std, origin_q_loss, idx, per, rew_loss
 
     def __compute_target_q(self, r, done, q,q_std, q_next, q_next_sample, log_prob_a_next):
         target_q = r + (1 - done) * self.gamma * (
