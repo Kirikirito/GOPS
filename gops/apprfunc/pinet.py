@@ -242,7 +242,7 @@ class StochaPolicy(nn.Module, Action_Distribution):
         hidden_sizes = kwargs["hidden_sizes"]
         self.std_type = kwargs["std_type"]
         self.pi_net = kwargs["pi_net"]
-        self.freeze_pi_net = kwargs["freeze_pi_net"] == "actor" 
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "actor" or kwargs["freeze_pi_net"] == "both"
         input_dim = self.pi_net.output_dim
 
         # mean and log_std are calculated by different MLP
@@ -327,7 +327,7 @@ class ActionValue(nn.Module, Action_Distribution):
         act_dim = kwargs["act_dim"]
         hidden_sizes = kwargs["hidden_sizes"]
         self.pi_net = kwargs["pi_net"]
-        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic"
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic" or kwargs["freeze_pi_net"] == "both"
         input_dim = self.pi_net.output_dim + act_dim
 
         self.q = mlp(
