@@ -54,7 +54,7 @@ if __name__ == "__main__":
     parser.add_argument("--env_config", type=dict, default=base_env_config)
     parser.add_argument("--env_model_config", type=dict, default=base_env_model_config)
     parser.add_argument("--scenerios_list", type=list, default=[':22',':22','22:'])
-
+    parser.add_argument("--pred_reward", type=bool, default=True)
     parser.add_argument("--vector_env_num", type=int, default=10, help="Number of vector envs")
     parser.add_argument("--vector_env_type", type=str, default='async', help="Options: sync/async")
     parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymnasium-style")
@@ -148,6 +148,7 @@ if __name__ == "__main__":
     pi_paras = cal_idsim_pi_paras(env_config=base_env_config, env_model_config=base_env_model_config)
     parser.add_argument("--target_PI", type=bool, default=True)
     parser.add_argument("--enable_self_attention", type=bool, default=True)
+    parser.add_argument("--use_multi_head", type=bool, default=True)
     parser.add_argument("--pi_begin", type=int, default=pi_paras["pi_begin"])
     parser.add_argument("--pi_end", type=int, default=pi_paras["pi_end"])
     parser.add_argument("--enable_mask", type=bool, default=True)
@@ -228,6 +229,12 @@ if __name__ == "__main__":
         "--ini_network_dir",
         type=str,
         default=None
+    )
+
+    parser.add_argument(
+        "--pi_ini_network_dir",
+        type=str,
+        default="/root/gops/results/idsim/idsim_multilane_exp_0813_2_new_attn/idsim_multilane_vec/dsact_pi/12345_2000000_run0/apprfunc/apprfunc_950000.pkl"
     )
     trainer_type = parser.parse_known_args()[0].trainer
     # 4.1. Parameters for off_serial_trainer
