@@ -1,0 +1,114 @@
+[
+    {
+        "iteration": 1910000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "133",
+        "seed": 455813426,
+        "traffic_seed": 945482516,
+        "ego_id": "63",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1910000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "181",
+        "seed": 11370303,
+        "traffic_seed": 669188129,
+        "ego_id": "81",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1940000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "164",
+        "seed": 379963534,
+        "traffic_seed": 1050453603,
+        "ego_id": "85",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1945000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "45",
+        "seed": 451925248,
+        "traffic_seed": 1001703588,
+        "ego_id": "71",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1950000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "99",
+        "seed": 750782760,
+        "traffic_seed": 98777475,
+        "ego_id": "43",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1950000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "125",
+        "seed": 981258879,
+        "traffic_seed": 662801379,
+        "ego_id": "79",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1955000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "69",
+        "seed": 69174872,
+        "traffic_seed": 308034144,
+        "ego_id": "85",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1960000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "238",
+        "seed": 23932754,
+        "traffic_seed": 65526979,
+        "ego_id": "81",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1965000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "18",
+        "seed": 697407587,
+        "traffic_seed": 267505657,
+        "ego_id": "75",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1970000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "197",
+        "seed": 388379224,
+        "traffic_seed": 999737446,
+        "ego_id": "94",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    },
+    {
+        "iteration": 1985000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "105",
+        "seed": 745399855,
+        "traffic_seed": 554196920,
+        "ego_id": "71",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    }
+    
+    
+]
