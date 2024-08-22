@@ -45,6 +45,15 @@ class OffSerialIdsimTrainer(OffSerialTrainer):
         # initialize center network
         if kwargs["ini_network_dir"] is not None:
             self.networks.load_state_dict(torch.load(kwargs["ini_network_dir"]))
+        if kwargs["pi_ini_network_dir"] is not None:
+            model_para_dict = self.networks.state_dict()
+            pi_para_dict = {k: v for k, v in model_para_dict.items() if "pi_net" in k}
+            network_dict = torch.load(kwargs["pi_ini_network_dir"])
+            for key, _ in pi_para_dict.items():  # replace the pi network parameters
+                pi_para_dict[key] = network_dict[key]
+            self.networks.load_state_dict(model_para_dict)  # load the model parameters
+            self.sampler.load_state_dict.remote(model_para_dict)  # load the model parameters
+            self.evaluator.load_state_dict.remote(model_para_dict)
 
         self.replay_batch_size = kwargs["replay_batch_size"]
         self.max_iteration = kwargs["max_iteration"]
