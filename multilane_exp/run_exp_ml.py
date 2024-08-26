@@ -14,13 +14,13 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_multilane_exp_0813_2_new_attn' 
-exp_discription = 'based on exp 0704_1_9, fix dsact coff bug add reward pred loss for state representation learning, real multihead attention'
+exp_name = 'idsim_multilane_exp_0822' 
+exp_discription = 'based on idsim_multilane_exp_0813_2_new_attn_highspeed_pre_train_fix_no_braking_mode'
 
 
 script_folder = "dsac"
 algs = ['dsact']
-apprfuncs = ['pi']
+apprfuncs = ['pismonet','pi']
 envs = ['idsim_multilane_vec']
 repeats_num = 1
 surfix_filter = 'offserial.py'
