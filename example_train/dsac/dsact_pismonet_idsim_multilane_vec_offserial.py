@@ -164,7 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("--others_hidden_activation", type=str, default="gelu")
     parser.add_argument("--others_output_activation", type=str, default="linear")
     parser.add_argument("--others_out_dim", type=int, default=32)
-    max_iter = 1_000_000
+    max_iter = 1_500_000
     parser.add_argument("--policy_scheduler", type=json.loads, default={
         "name": "CosineAnnealingLR",
         "params": {
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     )
     # Maximum iteration number
     parser.add_argument("--max_iteration", type=int, default=max_iter)
-    parser.add_argument("--freeze_iteration", type=int, default=0.4*max_iter)
+    parser.add_argument("--freeze_iteration", type=int, default=0.6*max_iter)
     # parser.add_argument("--freeze_iteration", type=int, default=300)
     parser.add_argument(
         "--ini_network_dir",

@@ -60,7 +60,7 @@ class ConvFilter(nn.Module):
         den = torch.zeros_like(tau)
         for i in range(kernel_size):
             den = den + tau ** i
-        nomalize_factor = 1/ den
+        nomalize_factor = 1/ den.detach()
         fliter_weight  = [nomalize_factor*tau ** (kernel_size - 1 - i) for i in range(kernel_size)]
         fliter_weight = torch.stack(fliter_weight, dim=2)
 
