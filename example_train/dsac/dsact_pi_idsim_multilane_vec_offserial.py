@@ -148,7 +148,7 @@ if __name__ == "__main__":
     parser.add_argument("--others_hidden_activation", type=str, default="gelu")
     parser.add_argument("--others_output_activation", type=str, default="linear")
     parser.add_argument("--others_out_dim", type=int, default=32)
-    max_iter = 1_500_000
+    max_iter = 1_000_000
     parser.add_argument("--policy_scheduler", type=json.loads, default={
         "name": "CosineAnnealingLR",
         "params": {
@@ -212,12 +212,6 @@ if __name__ == "__main__":
         type=str,
         default=None
     )
-
-    # parser.add_argument(
-    #     "--pi_ini_network_dir",
-    #     type=str,
-    #     default="/root/gops/results/idsim/idsim_multilane_exp_0813_2_new_attn/idsim_multilane_vec/dsact_pi/12345_2000000_run0/apprfunc/apprfunc_950000.pkl"
-    # )
     trainer_type = parser.parse_known_args()[0].trainer
     # 4.1. Parameters for off_serial_trainer
     parser.add_argument(
