@@ -14,8 +14,8 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_multilane_exp_0822' 
-exp_discription = 'based on idsim_multilane_exp_0813_2_new_attn_highspeed_pre_train_fix_no_braking_mode'
+exp_name = 'idsim_multilane_exp_0831' 
+exp_discription = 'based on idsim_multilane_exp_0813_2_new_attn_highspeed_pre_train_fix_no_braking_mode add opposite veh, fix action bound no pretrain'
 
 
 script_folder = "dsac"
