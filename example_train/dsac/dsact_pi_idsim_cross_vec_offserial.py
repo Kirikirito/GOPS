@@ -54,7 +54,7 @@ if __name__ == "__main__":
     parser.add_argument("--env_config", type=dict, default=base_env_config)
     parser.add_argument("--env_model_config", type=dict, default=base_env_model_config)
     parser.add_argument("--scenerios_list", type=list, default=[':100','100:'])
-
+    parser.add_argument("--pred_reward", type=bool, default=True)
     parser.add_argument("--vector_env_num", type=int, default=10, help="Number of vector envs")
     parser.add_argument("--vector_env_type", type=str, default='async', help="Options: sync/async")
     parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymnasium-style")
@@ -132,6 +132,7 @@ if __name__ == "__main__":
     pi_paras = cal_idsim_pi_paras(env_config=base_env_config, env_model_config=base_env_model_config)
     parser.add_argument("--target_PI", type=bool, default=True)
     parser.add_argument("--enable_self_attention", type=bool, default=True)
+    parser.add_argument("--use_multi_head", type=bool, default=True)
     parser.add_argument("--pi_begin", type=int, default=pi_paras["pi_begin"])
     parser.add_argument("--pi_end", type=int, default=pi_paras["pi_end"])
     parser.add_argument("--enable_mask", type=bool, default=True)
@@ -185,7 +186,7 @@ if __name__ == "__main__":
     parser.add_argument("--value_learning_rate", type=float, default=1e-4)
     parser.add_argument("--policy_learning_rate", type=float, default=1e-4)
     parser.add_argument("--pi_learning_rate", type=float, default=1e-5)
-    parser.add_argument("--alpha_learning_rate", type=float, default=3e-4)
+    parser.add_argument("--alpha_learning_rate", type=float, default=1e-5)
 
     # special parameter
     parser.add_argument("--gamma", type=float, default=0.90)
@@ -211,6 +212,8 @@ if __name__ == "__main__":
         type=str,
         default=None
     )
+
+
     trainer_type = parser.parse_known_args()[0].trainer
     # 4.1. Parameters for off_serial_trainer
     parser.add_argument(
