@@ -25,7 +25,7 @@ env_config_param_base = {
     "warmup_time": 50.0,
     "max_steps": 200,
     "random_ref_v": True,
-    "ref_v_range": (2, 12.0),
+    "ref_v_range": (2, 10.0),
     "nonimal_acc": True,
     "ignore_traffic_lights": False,
     "no_done_at_collision": True, 
@@ -70,13 +70,13 @@ env_config_param_base = {
     "punish_sur_mode": "max",
     "enable_slow_reward": True,
     "R_step": 15.0,
-    "P_lat": 5.0,
+    "P_lat": 7.5,
     "P_long": 8.0,
     "P_phi": 3.0,
     "P_yaw": 2.0,
     "P_front": 5.0,
     "P_side": 0.0,
-    "P_space": 5.0,
+    "P_space": 15.0,
     "P_rear": 0.0,
     "P_steer": 0.2,
     "P_acc": 0.2,
@@ -86,7 +86,7 @@ env_config_param_base = {
     "P_boundary": 0,
     "safety_lat_margin_front": 0.3,
     "safety_long_margin_front": 0.0,
-    "safety_long_margin_side": 2.0,
+    "safety_long_margin_side": 2.5,
     "front_dist_thd": 50.0,
     "space_dist_thd": 8.0,
     "rel_v_thd": 1.0,
@@ -177,7 +177,7 @@ env_config_param_multilane = {
     "random_acc_cooldown": (30, 50, 50), # cooldown for acceleration, deceleration and ref_v, respectively
     "random_acc_prob": (0.1, 0.1), # probability to accelerate and decelerate, respectively
     "random_acc_range": (0.2, 0.8), # (m/s^2), used for acceleration
-    "random_dec_range": (-1.8, -0.2), # (m/s^2), used for deceleration
+    "random_dec_range": (-1.5, -0.1), # (m/s^2), used for deceleration
 }
 
 model_config_multilane = {
@@ -211,19 +211,26 @@ model_config_multilane = {
     #     "env_reward_jerk",
     # )
     "reward_comps": ( 
-        "env_pun2front",
-        "env_pun2side",
-        "env_pun2space",
-        "env_pun2rear",
-        "env_reward_vel_long",
-        "env_reward_yaw_rate",
-        "env_reward_dist_lat",
-        "env_reward_head_ang",
-        "env_reward_steering",
-        "env_reward_acc_long",
-        "env_reward_delta_steer",
-        "env_reward_jerk",
-    )
+            "env_scaled_reward_part2",
+            "env_scaled_reward_step",
+            "env_scaled_reward_dist_lat",
+            "env_scaled_reward_vel_long",
+            "env_scaled_reward_head_ang",
+            "env_scaled_reward_yaw_rate",
+            "env_scaled_reward_steering",
+            "env_scaled_reward_acc_long",
+            "env_scaled_reward_delta_steer",
+            "env_scaled_reward_jerk",
+            "env_scaled_reward_part1",
+            "env_reward_collision_risk",
+            "env_scaled_pun2front",
+            "env_scaled_pun2side",
+            "env_scaled_pun2space",
+            "env_scaled_pun2rear",
+            "env_scaled_punish_boundary",
+            "env_scaled_reward_done",
+            "env_scaled_reward_collision",
+            )
 }
 
 
