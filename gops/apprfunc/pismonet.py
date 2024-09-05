@@ -584,6 +584,18 @@ class ActionValueDistri(nn.Module):
         self.min_log_std = kwargs["min_log_std"]
         self.max_log_std = kwargs["max_log_std"]
         self.denominator = max(abs(self.min_log_std), self.max_log_std)
+        if kwargs.get("additional_info") is None:
+            pass
+        elif kwargs["additional_info"].get("reward_comps") is None:
+            pass
+        else:        
+            rew_comp_dim = kwargs["additional_info"]["reward_comps"]["shape"][0]
+            self.rew_pred_head = mlp(
+                [input_dim] +[64]+ [rew_comp_dim],
+                get_activation_func(kwargs["hidden_activation"]),
+                get_activation_func(kwargs["output_activation"]),
+            )
+
     def shared_paras(self):
         return self.pi_net.parameters()
 
@@ -614,6 +626,10 @@ class ActionValueDistri(nn.Module):
         for module in self.modules():
             if isinstance(module, FMLP):
                 module.freeze()
+    def predict_reward(self, obs, act):
+        encoding = self.pi_net(obs)
+        return self.rew_pred_head(torch.cat([encoding, act], dim=-1))
+    
 
 
 class ActionValueDistriMultiR(nn.Module):
