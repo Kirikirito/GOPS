@@ -131,6 +131,7 @@ class DSACTPI(AlgorithmBase):
         self.target_PI = kwargs["target_PI"]
         self.per_flag = kwargs["buffer_name"].startswith("prioritized") # FIXME: hard code
         self.pred_reward = kwargs.get("pred_reward", False)
+        
 
     @property
     def adjustable_parameters(self):
@@ -395,7 +396,7 @@ class DSACTPI(AlgorithmBase):
             idx = None
             per = None
 
-        if data.get("reward_comps", None) is not None and self.pred_reward:  # need to learn reward component
+        if data.get("reward_comps", None) is not None and self.pred_reward and obs.dim()<=2:  # need to learn reward component
             rew_comps = data["reward_comps"]
             rew_pred = self.networks.q1.predict_reward(obs, act)
             rew_loss = torch.mean((rew_pred - rew_comps) ** 2)
