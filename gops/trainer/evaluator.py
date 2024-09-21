@@ -89,7 +89,7 @@ class Evaluator:
             logits = self.networks.policy(self.obs_buffer.get().to(self.device))
             action_distribution = self.networks.create_action_distributions(logits)
             action = action_distribution.mode()
-            action = action.detach().numpy()[0]
+            action = action.detach().cpu().numpy()[0]
             next_obs, reward, done, next_info = self.env.step(action)
             obs_list.append(obs)
             action_list.append(action)

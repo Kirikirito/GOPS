@@ -33,13 +33,18 @@ if __name__ == "__main__":
     # Key Parameters for users
     parser.add_argument("--env_id", type=str, default="gym_humanoid", help="id of environment")
     parser.add_argument("--algorithm", type=str, default="TD3", help="RL algorithm")
-    parser.add_argument("--enable_cuda", default=False, help="Disable CUDA")
-    parser.add_argument("--seed", default=12345, help="Global seed")
+    parser.add_argument("--enable_cuda", default=True, help="Disable CUDA")
+    parser.add_argument("--seed", default=12345, help="Enable CUDA")
     ################################################
     # 1. Parameters for environment
     parser.add_argument("--reward_scale", type=float, default=1, help="reward scale factor")
+    parser.add_argument("--action_type", type=str, default="continu", help="Options: continu/discret")
     parser.add_argument("--is_render", type=bool, default=False, help="Draw environment animation")
     parser.add_argument("--is_adversary", type=bool, default=False, help="Adversary training")
+
+    parser.add_argument("--vector_env_num", type=int, default=4, help="Number of vector envs")
+    parser.add_argument("--vector_env_type", type=str, default='async', help="Options: sync/async")
+    parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymnasium-style")
 
     ################################################
     # 2.1 Parameters of value approximate function
@@ -85,7 +90,7 @@ if __name__ == "__main__":
     parser.add_argument("--policy_learning_rate", type=float, default=0.0001)
 
     # special parameter
-    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--gamma", type=float, default=0.995)
     parser.add_argument("--tau", type=float, default=0.005)
 
     ################################################
@@ -148,13 +153,12 @@ if __name__ == "__main__":
     ################################################
     # Get parameter dictionary
     args = vars(parser.parse_args())
-    env = create_env(**args)
+    env = create_env(**{**args, "vector_env_num": None})
     args = init_args(env, **args)
 
-    start_tensorboard(args["save_folder"])
+    #start_tensorboard(args["save_folder"])
     # Step 1: create algorithm and approximate function
     alg = create_alg(**args)
-    alg.set_parameters({"gamma": 0.99, "tau": 0.005, "delay_update": 2})
     # Step 2: create sampler in trainer
     sampler = create_sampler(**args)
     # Step 3: create buffer in trainer
@@ -171,6 +175,6 @@ if __name__ == "__main__":
 
     ################################################
     # Plot and save training figures
-    plot_all(args["save_folder"])
+    #plot_all(args["save_folder"])
     save_tb_to_csv(args["save_folder"])
     print("Plot & Save are finished!")

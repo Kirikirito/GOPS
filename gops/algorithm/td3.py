@@ -29,7 +29,7 @@ from gops.utils.common_utils import get_apprfunc_dict
 
 class ApproxContainer(ApprBase):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(kwargs)
         # create value network
         q_args = get_apprfunc_dict("value", **kwargs)
         self.q1 = create_apprfunc(**q_args)
@@ -92,8 +92,8 @@ class TD3(AlgorithmBase):
         self.noise_clip = noise_clip
         self.act_low_limit = kwargs["action_low_limit"]
         self.act_high_limit = kwargs["action_high_limit"]
-        self.gamma = 0.99
-        self.tau = 0.005
+        self.gamma = kwargs["gamma"]
+        self.tau = kwargs["tau"]
         self.delay_update = 2
         self.reward_scale = 1
         self.per_flag = buffer_name == "prioritized_replay_buffer"

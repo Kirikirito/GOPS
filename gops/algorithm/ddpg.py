@@ -33,7 +33,7 @@ class ApproxContainer(ApprBase):
 
         Contains a policy and an action value.
         """
-        super().__init__(**kwargs)
+        super().__init__(kwargs)
         # create value network
         q_args = get_apprfunc_dict("value", **kwargs)
         self.q = create_apprfunc(**q_args)
@@ -79,8 +79,8 @@ class DDPG(AlgorithmBase):
     def __init__(self, index=0, buffer_name="replay_buffer", **kwargs):
         super().__init__(index, **kwargs)
         self.networks = ApproxContainer(**kwargs)
-        self.gamma = 0.99
-        self.tau = 0.005
+        self.gamma = kwargs["gamma"]
+        self.tau = kwargs["tau"]
         self.delay_update = 1
         self.per_flag = buffer_name == "prioritized_replay_buffer"
 
