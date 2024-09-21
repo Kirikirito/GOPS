@@ -14,8 +14,8 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_cross_exp_0828_2' 
-exp_discription = 'based on exp 0811, some small reward changes and env settings, fix bug'
+exp_name = 'idsim_cross_exp_0828_3_DUMMY' 
+exp_discription = 'based on exp 0811, some small reward changes and env settings, fix bug new '
 
 
 script_folder = "dsac"

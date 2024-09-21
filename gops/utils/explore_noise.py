@@ -54,9 +54,14 @@ class EpsilonGreedy:
 
 
 class GaussNoise:
-    def __init__(self, mean, std):
+    def __init__(self, mean, std, decay = 0):
         self.mean = mean
         self.std = std
+        self.decay = decay
+
 
     def sample(self, action):
-        return action + np.random.normal(self.mean, self.std)
+        self.std = self.std * (1 - self.decay)
+        # print(self.std)
+        noise = np.random.normal(self.mean, self.std, size=action.shape)
+        return action + noise

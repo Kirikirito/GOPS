@@ -81,7 +81,7 @@ env_config_param_base = {
     "P_acc": 0.2,
     "P_delta_steer": 0.25,
     "P_jerk": 0.3,
-    "P_done": 200.0,
+    "P_done": 400.0,
     "P_boundary": 0,
     "safety_lat_margin_front": 0.3,
     "safety_long_margin_front": 0.0,

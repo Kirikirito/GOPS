@@ -14,11 +14,13 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 script_path = os.path.join(base_path, 'example_train')
 save_folder = os.path.join(base_path, 'results/idsim')
 
-exp_name = 'idsim_multilane_exp_0905' 
-exp_discription = 'based on idsim_multilane_exp_0813_2_new_attn \
-1. add space safty margin in side punish \
-2. no bias in junction \
-3. weak punish pos if in breaking condition'
+exp_name = 'idsim_multilane_exp_0907_DUMMY' 
+exp_discription = 'based on idsim_multilane_exp_0905 \
+1. double out of area punish \
+2. less brake condition \
+3. less nominal acc -1.5->-1v\
+4. punish vel_long while bracking mode cancel nomimal acc\
+5. load prev pi freeeze pi low alpha leaarning rate explore noise decay'
 
 
 script_folder = "dsac"

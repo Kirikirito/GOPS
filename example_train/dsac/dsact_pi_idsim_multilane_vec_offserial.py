@@ -142,7 +142,7 @@ if __name__ == "__main__":
     parser.add_argument("--pi_hidden_sizes", type=list, default=[256,256])
     parser.add_argument("--pi_hidden_activation", type=str, default="gelu")
     parser.add_argument("--pi_output_activation", type=str, default="gelu")
-    parser.add_argument("--freeze_pi_net", type=str, default="none")
+    parser.add_argument("--freeze_pi_net", type=str, default="both")
     parser.add_argument("--encoding_others", type=bool, default=False)
     parser.add_argument("--others_hidden_sizes", type=list, default=[64,64])
     parser.add_argument("--others_hidden_activation", type=str, default="gelu")
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     parser.add_argument("--value_learning_rate", type=float, default=1e-4)
     parser.add_argument("--policy_learning_rate", type=float, default=1e-4)
     parser.add_argument("--pi_learning_rate", type=float, default=1e-5)
-    parser.add_argument("--alpha_learning_rate", type=float, default=3e-4)
+    parser.add_argument("--alpha_learning_rate", type=float, default=1e-5)
 
     # special parameter
     parser.add_argument("--gamma", type=float, default=0.90)
@@ -212,6 +212,12 @@ if __name__ == "__main__":
         type=str,
         default=None
     )
+
+    parser.add_argument(
+        "--pi_ini_network_dir",
+        type=str,
+        default="/root/gops/results/idsim/idsim_multilane_exp_0905/idsim_multilane_vec/dsact_pi/12345_2000000_run0/apprfunc/apprfunc_950000.pkl"
+    )
     trainer_type = parser.parse_known_args()[0].trainer
     # 4.1. Parameters for off_serial_trainer
     parser.add_argument(
@@ -234,7 +240,8 @@ if __name__ == "__main__":
     # Batch size of sampler for buffer store
     parser.add_argument("--sample_batch_size", type=int, default=80)
     # Add noise to action for better exploration
-    parser.add_argument("--noise_params", type=dict, default={"mean": np.array([0,0], dtype=np.float32), "std": np.array([0.2,0.2], dtype=np.float32),},
+    # NOTE: max iter *80/(10*20) = 400k 100k decay period
+    parser.add_argument("--noise_params", type=dict, default={"mean": np.array([0,0], dtype=np.float32), "std": np.array([0.2,0.2], dtype=np.float32),"decay":1e-5},
         help="used for continuous action space")
 
     ################################################
