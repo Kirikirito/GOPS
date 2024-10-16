@@ -75,7 +75,7 @@ if __name__ == "__main__":
     parser.add_argument("--obs_scale", type=dict, default=obs_scale)
     parser.add_argument("--repeat_num", type=int, default=4, help="action repeat num")
 
-    parser.add_argument("--algorithm", type=str, default="DSACT", help="RL algorithm")
+    parser.add_argument("--algorithm", type=str, default="SAC", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=True, help="Enable CUDA")
     parser.add_argument("--seed", default=1, help="seed")
 
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--value_func_name",
         type=str,
-        default="ActionValueDistri",
+        default="ActionValue",
         help="Options: StateValue/ActionValue/ActionValueDis/ActionValueDistri",
     )
     parser.add_argument("--value_func_type", type=str, default="MLP", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
@@ -160,6 +160,7 @@ if __name__ == "__main__":
     ################################################
     # 3. Parameters for RL algorithm
     parser.add_argument("--value_learning_rate", type=float, default=1e-4)
+    parser.add_argument("--q_learning_rate", type=float, default=1e-4)
     parser.add_argument("--policy_learning_rate", type=float, default=1e-4)
     parser.add_argument("--alpha_learning_rate", type=float, default=1e-5)
 
