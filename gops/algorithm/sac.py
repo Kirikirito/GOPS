@@ -103,7 +103,7 @@ class SAC(AlgorithmBase):
         if target_entropy is None:
             target_entropy = -kwargs["action_dim"]
         self.target_entropy = target_entropy
-
+        self.per_flag = kwargs["buffer_name"].startswith("prioritized") # FIXME: hard code
     @property
     def adjustable_parameters(self):
         return ("gamma", "tau", "auto_alpha", "alpha", "target_entropy")
@@ -167,7 +167,7 @@ class SAC(AlgorithmBase):
 
         self.networks.q1_optimizer.zero_grad()
         self.networks.q2_optimizer.zero_grad()
-        loss_q, q1, q2 = self.__compute_loss_q(data)
+        loss_q, q1, q2, idx, td_err = self.__compute_loss_q(data)
         loss_q.backward()
 
         for p in self.networks.q1.parameters():
@@ -199,7 +199,10 @@ class SAC(AlgorithmBase):
             tb_tags["alg_time"]: (time.time() - start_time) * 1000,
         }
 
-        return tb_info
+        if self.per_flag:
+            return tb_info, idx, td_err
+        else:
+            return tb_info
 
     def __compute_loss_q(self, data: DataDict):
         obs, act, rew, obs2, done = (
@@ -223,7 +226,17 @@ class SAC(AlgorithmBase):
             )
         loss_q1 = ((q1 - backup) ** 2).mean()
         loss_q2 = ((q2 - backup) ** 2).mean()
-        return loss_q1 + loss_q2, q1.detach().mean(), q2.detach().mean()
+
+        if self.per_flag:
+            idx = data["idx"]
+            td_err = (torch.abs(next_q1 - q1) + torch.abs(next_q2 - q2)) / 2
+            # print("td_err_max", td_err.max().item())
+            # print("td_err_min", td_err.min().item())
+            per = td_err/2000 # TODO: 2000 is a hyperparameter
+        else:
+            idx = None
+            per = None
+        return loss_q1 + loss_q2, q1.detach().mean(), q2.detach().mean(), idx, per
 
     def __compute_loss_policy(self, data: DataDict):
         obs, new_act, new_logp = data["obs"], data["new_act"], data["new_logp"]

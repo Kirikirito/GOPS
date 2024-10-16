@@ -39,7 +39,7 @@ class ApproxContainer(ApprBase):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(kwargs)
         # create q networks
         q_args = get_apprfunc_dict("value", **kwargs)
         self.q: nn.Module = create_apprfunc(**q_args)
@@ -96,6 +96,8 @@ class DSAC(AlgorithmBase):
         self.alpha = kwargs.get("alpha", 0.2)
         self.bound = kwargs["bound"]
         self.delay_update = kwargs["delay_update"]
+        self.per_flag = kwargs["buffer_name"].startswith("prioritized") # FIXME: hard code
+        self.pred_reward = kwargs.get("pred_reward", False)
 
     @property
     def adjustable_parameters(self):
@@ -165,7 +167,7 @@ class DSAC(AlgorithmBase):
         data.update({"new_act": new_act, "new_log_prob": new_log_prob})
 
         self.networks.q_optimizer.zero_grad()
-        loss_q, q, std = self.__compute_loss_q(data)
+        loss_q, q, std,idx, td_err = self.__compute_loss_q(data)
         loss_q.backward()
 
         for p in self.networks.q.parameters():
@@ -193,13 +195,15 @@ class DSAC(AlgorithmBase):
             "DSAC/alpha-RL iter": self.__get_alpha(),
             tb_tags["alg_time"]: (time.time() - start_time) * 1000,
         }
-
-        return tb_info
+        if self.per_flag:
+            return tb_info, idx, td_err
+        else:
+            return tb_info
 
     def __q_evaluate(self, obs, act, qnet, use_min=False):
         StochaQ = qnet(obs, act)
         mean, std = StochaQ[..., 0], StochaQ[..., -1]
-        normal = Normal(torch.zeros(mean.shape), torch.ones(std.shape))
+        normal = Normal(torch.zeros_like(mean), torch.ones_like(std))
         if use_min:
             z = -torch.abs(normal.sample())
         else:
@@ -240,7 +244,16 @@ class DSAC(AlgorithmBase):
             )
         else:
             q_loss = -Normal(q, q_std).log_prob(target_q).mean()
-        return q_loss, q.detach().mean(), q_std.detach().mean()
+        if self.per_flag:
+            idx = data["idx"]
+            td_err = torch.abs(target_q - q)
+            # print("td_err_max", td_err.max().item())
+            # print("td_err_min", td_err.min().item())
+            per = td_err/2000 # TODO: 2000 is a hyperparameter
+        else:
+            idx = None
+            per = None
+        return q_loss, q.detach().mean(), q_std.detach().mean(), idx, per
 
     def __compute_target_q(self, r, done, q, q_std, q_next, log_prob_a_next):
         target_q = r + (1 - done) * self.gamma * (
