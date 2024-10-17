@@ -95,6 +95,7 @@ class DSAC(AlgorithmBase):
         self.auto_alpha = kwargs["auto_alpha"]
         self.alpha = kwargs.get("alpha", 0.2)
         self.bound = kwargs["bound"]
+        self.td_bound = kwargs.get("TD_bound", 10)
         self.delay_update = kwargs["delay_update"]
         self.per_flag = kwargs["buffer_name"].startswith("prioritized") # FIXME: hard code
         self.pred_reward = kwargs.get("pred_reward", False)
@@ -259,7 +260,7 @@ class DSAC(AlgorithmBase):
         target_q = r + (1 - done) * self.gamma * (
             q_next - self.__get_alpha() * log_prob_a_next
         )
-        td_bound = 3 * torch.mean(q_std)
+        td_bound = self.td_bound 
         difference = torch.clamp(target_q - q, -td_bound, td_bound)
         target_q_bound = q + difference
         return target_q.detach(), target_q_bound.detach()
