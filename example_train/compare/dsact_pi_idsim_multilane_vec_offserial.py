@@ -81,15 +81,6 @@ if __name__ == "__main__":
 
     ################################################
     # 1. Parameters for environment
-
-    parser.add_argument("--obs_noise_type", type=str, default= 'uniform')
-    parser.add_argument("--obs_noise_data", type=float,nargs='+', default= [0, 0.1], help="noise data")
-    parser.add_argument("--add_to_info", type=bool, default= True)
-    parser.add_argument("--rel_noise_scale", type=bool, default= True)
-    parser.add_argument("--augment_act", type=bool,default=False, help="Augment action")
-    parser.add_argument("--seq_len", type=int, default=8)
-    seq_len = parser.parse_known_args()[0].seq_len
-
     parser.add_argument("--reward_scale", type=float, default=1, help="reward scale factor")
     parser.add_argument("--action_type", type=str, default="continu", help="Options: continu/discret")
     parser.add_argument("--is_render", type=bool, default=False, help="Draw environment animation")
@@ -98,16 +89,13 @@ if __name__ == "__main__":
 
     ################################################
     # 2.1 Parameters of value approximate function
-    parser.add_argument("--loss_weight", type=float, default=0.001, help="tau decay factor")
-    loss_weight = parser.parse_known_args()[0].loss_weight
-    parser.add_argument("--tau_layer_num", type=int, default=2, help="Number of tau layers")
     parser.add_argument(
         "--value_func_name",
         type=str,
         default="ActionValueDistri",
         help="Options: StateValue/ActionValue/ActionValueDis/ActionValueDistri",
     )
-    parser.add_argument("--value_func_type", type=str, default="PISMONET", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
+    parser.add_argument("--value_func_type", type=str, default="PINet", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
     parser.add_argument("--value_hidden_sizes", type=list, default=[256, 256,256])
     parser.add_argument("--value_std_type", type=str, default='mlp_separated', help="Options: mlp_separated/mlp_shared")
     parser.add_argument(
@@ -115,8 +103,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--value_output_activation", type=str, default="linear", help="Options: linear/tanh")
 
-    parser.add_argument("--value_kernel_size", type=int,nargs='+', default= [seq_len,1,1,1], help="kernel size for each layer")
-    parser.add_argument("--value_loss_weight", type=float, default=0, help="tau decay factor")
 
     # 2.2 Parameters of policy approximate function
     parser.add_argument(
@@ -126,7 +112,7 @@ if __name__ == "__main__":
         help="Options: None/DetermPolicy/FiniteHorizonPolicy/StochaPolicy",
     )
     parser.add_argument(
-        "--policy_func_type", type=str, default="PISMONET", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS"
+        "--policy_func_type", type=str, default="PINet", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS"
     )
     parser.add_argument(
         "--policy_act_distribution",
@@ -142,8 +128,6 @@ if __name__ == "__main__":
     parser.add_argument("--policy_min_log_std", type=int, default=-20)
     parser.add_argument("--policy_max_log_std", type=int, default=0.5)
 
-    parser.add_argument("--policy_kernel_size", type=int,nargs='+', default= [seq_len,1,1,1], help="kernel size for each layer")
-    parser.add_argument("--policy_loss_weight", type=float, default=loss_weight, help="tau decay factor")
     # 2.3 Parameters of shared approximate function
     pi_paras = cal_idsim_pi_paras(env_config=base_env_config, env_model_config=base_env_model_config)
     parser.add_argument("--target_PI", type=bool, default=True)
@@ -223,8 +207,6 @@ if __name__ == "__main__":
     )
     # Maximum iteration number
     parser.add_argument("--max_iteration", type=int, default=max_iter)
-    parser.add_argument("--freeze_iteration", type=int, default=0.6*max_iter)
-    # parser.add_argument("--freeze_iteration", type=int, default=300)
     parser.add_argument(
         "--ini_network_dir",
         type=str,

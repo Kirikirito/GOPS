@@ -231,11 +231,11 @@ if __name__ == "__main__":
         default=None
     )
 
-    parser.add_argument(
-        "--pi_ini_network_dir",
-        type=str,
-        default="/root/gops/results/idsim/idsim_cross_exp_0828/idsim_cross_vec/dsact_pismonet/12345_2000000_run0/apprfunc/apprfunc_1150000.pkl"
-    )
+    # parser.add_argument(
+    #     "--pi_ini_network_dir",
+    #     type=str,
+    #     default="/root/gops/results/idsim/idsim_cross_exp_0828/idsim_cross_vec/dsact_pismonet/12345_2000000_run0/apprfunc/apprfunc_1150000.pkl"
+    # )
     trainer_type = parser.parse_known_args()[0].trainer
     # 4.1. Parameters for off_serial_trainer
     parser.add_argument(
