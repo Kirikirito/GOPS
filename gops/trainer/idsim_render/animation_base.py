@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from gops.trainer.idsim_idc_evaluator import EvalResult
-from gops.trainer.idsim_render.color import SUR_COLOR, SUR_COLOR_WITH_ALPHA, SUR_FOCUS_COLOR, SUR_FOCUS_COLOR_WITH_ALPHA
+from gops.trainer.idsim_render.color import SUR_COLOR, SUR_COLOR_WITH_ALPHA, SUR_FOCUS_COLOR, SUR_FOCUS_COLOR_WITH_ALPHA, SUR_COLOR_TRANSPARENT
 from gops.trainer.idsim_render.process_fcd import FCDLog
 from gops.trainer.idsim_render.render_params import multilane_surr_size_dict, crossroad_surr_size_dict, traffic_light_length, traffic_light_width, \
     sur_face_color, ego_face_color, ref_color_list
@@ -103,6 +103,7 @@ class AnimationBase:
         self.surr_focus_ref_list = []
 
     def update_sur_participants(self, ax, cur_time, episode_data, step):
+        cur_time = max(0, cur_time - 0.1)  # 
         participants = self.fcd_log.at(cur_time).vehicles
         ego_veh_id = episode_data.ego_id
         if self.env_scenario == "multilane": #TODO: update when change the scenario setting
@@ -152,13 +153,19 @@ class AnimationBase:
             x, y, phi = convert_sumo_coord_to_ground_coord(
                 surr.x, surr.y, surr.angle, length)
             if surr.id in to_add:
+                if hasattr(episode_data, 'focused_vehicle_ids') and surr.id in episode_data.focused_vehicle_ids[step]:
+                    facecolor = SUR_COLOR_TRANSPARENT
+                    edgecolor = SUR_COLOR_TRANSPARENT
+                else:
+                    facecolor = SUR_COLOR_WITH_ALPHA
+                    edgecolor = SUR_COLOR
                 self.surr_dict[surr.id] = create_veh(
                     ax, (x, y), phi, length, width,
-                    facecolor=SUR_COLOR_WITH_ALPHA, edgecolor=SUR_COLOR, zorder=200
+                    facecolor=facecolor, edgecolor=edgecolor, zorder=200
                 )
                 self.surr_head_dict[surr.id] = ax.plot(
                     [x, x+length*0.8*np.cos(phi)], [y, y+length*0.8*np.sin(phi)],
-                    color=SUR_COLOR_WITH_ALPHA, linewidth=0.5, zorder=200
+                    color=facecolor, linewidth=0.5, zorder=200
                 )
             elif surr.id in to_update:
                 update_veh(self.surr_dict[surr.id], (x, y), phi, length, width, )
@@ -197,7 +204,7 @@ class AnimationBase:
             if mask == 1:
                 # print(f"attn_weight: {attn_weight}")
                 facecolor_with_attn = self.get_color_by_attn_weight(attn_weight)
-                edgecolor_with_attn = SUR_FOCUS_COLOR[0:3] + (attn_weight,)
+                edgecolor_with_attn = SUR_FOCUS_COLOR
                 self.surr_focus_list.append(create_veh(ax, (x,y), phi, length, width, facecolor=facecolor_with_attn, edgecolor=edgecolor_with_attn, zorder=201))
                 self.surr_focus_ref_list.append(ax.add_line(Line2D(
                         surr_param[:, i, 0], surr_param[:, i, 1],

@@ -68,6 +68,7 @@ class EvalResult:
         self.reference_list: List[np.ndarray] = []
         self.surr_state_list: List[np.ndarray] = []
         self.surrounding_vehicles: List[SurroundingVehicle] = []
+        self.focused_vehicle_ids: List[str] = []
         self.context_list: List[BaseContext] = []
         self.context_full_list: List[BaseContext] = []
         self.obs_list: List[np.ndarray] = []
@@ -444,6 +445,8 @@ class IdsimIDCEvaluator(Evaluator):
             eval_result.surr_state_list.append(
             idsim_context.p.sur_param.numpy())
             eval_result.time_stamp_list.append(idsim_context.t)
+            eval_result.focused_vehicle_ids.append(self.env.engine.context.vehicle.focused_vehicle_ids)
+            # print(f"focused_vehicle_ids: {self.env.engine.context.vehicle.focused_vehicle_ids}")
             eval_result.selected_path_index_list.append(selected_path_index)
             for k in eval_result.reward_info.keys():
                 if k in info.keys() and  ((k.startswith("env_scaled") or k in ["env_speed_error","env_tracking_error","env_delta_phi"]) or k.startswith("state")):
