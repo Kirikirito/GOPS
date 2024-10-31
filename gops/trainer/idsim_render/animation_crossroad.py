@@ -65,7 +65,7 @@ class AnimationCross(AnimationBase):
     def clear_text(self):
         self.text_counter = 0
 
-    def generate_animation(self, episode_data: EvalResult, save_video_path: str, episode_index: int, fps=20, mode='debug',dpi = 100, frame_skip=1,test_scene=None,plot_reward= False):
+    def generate_animation(self, episode_data: EvalResult, save_video_path: str, episode_index: int, fps=20, mode='debug',dpi = 100, frame_skip=1,test_scene=None,plot_reward= False, max_frame_num = 2000,):
         metadata = dict(title='Demo', artist='Guojian Zhan', comment='idsim',)
         writer = FFMpegWriter(fps=fps, metadata=metadata)
 
@@ -167,8 +167,12 @@ class AnimationCross(AnimationBase):
 
         self.text_list = []
         # ---------------------- update-----------------------
-
+        max_frame_num = min(max_frame_num, len(episode_data.time_stamp_list))
         for step in range(0, len(episode_data.time_stamp_list), frame_skip):
+            # if step == frame_skip:
+            #     #save the first frame as svg and jpg
+            #     fig.savefig(save_video_path / f'{self.task_name}_{episode_index}.svg', format='svg')
+            #     fig.savefig(save_video_path  / f'{self.task_name}_{episode_index}.jpg', format='jpg')
             if mode == 'debug' and step % 10 == 0:
                 print(f'step={step}/{len(episode_data.time_stamp_list)}')
             cur_time = episode_data.time_stamp_list[step]

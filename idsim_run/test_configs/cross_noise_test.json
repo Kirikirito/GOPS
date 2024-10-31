@@ -5,7 +5,7 @@
     "scenario_reuse": 1,
     "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v2/",
     "ini_network_root": "/root/gops/gops/idsim",
-    "test_case_file": "/root/gops/idsim_run/test_cases/test_case_training_cross.json",
+    "test_case_file": "/root/gops/idsim_run/test_cases/test_case_training_cross_noise_test.json",
     "test_filter": null,
     "nn_index": null,
     "dpi": 60,

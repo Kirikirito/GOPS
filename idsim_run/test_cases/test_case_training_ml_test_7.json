@@ -1,0 +1,13 @@
+[
+   
+    {
+        "iteration": 490000,
+        "scenario_root": "/root/idsim-scenarios/idsim-multilane-cross-dense-v20-mix-multi-size-v3",
+        "map_id": "0",
+        "seed": 342641790,
+        "traffic_seed": 414158469,
+        "ego_id": "83",
+        "warmup_time": 100.0,
+        "scene": "off_road"
+    }
+]

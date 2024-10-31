@@ -69,7 +69,8 @@ class AnimationLane(AnimationBase):
         frame_skip=1,
         fps=20,
         mode='debug',
-        dpi = 50,
+        dpi = 600,
+        max_frame_num = 2000,
         plot_reward=True,
     ):
         metadata = dict(title='Demo', artist='Guojian Zhan', comment='idsim')
@@ -132,7 +133,12 @@ class AnimationLane(AnimationBase):
         reward_text_values = [line.get_ydata() for line in self.ax3_1.get_lines()]
         text_handles = []
         # ---------------------- update-----------------------
-        for step in range(0, len(episode_data.time_stamp_list), frame_skip):
+        max_frame_num = min(max_frame_num, len(episode_data.time_stamp_list))
+        for step in range(0, max_frame_num, frame_skip):
+            if step == frame_skip or step % (max_frame_num // 10) == 0:
+                #save the first frame as svg and jpg
+                fig.savefig(save_path / 'video' / f'{video_name}.svg', format='svg')
+                fig.savefig(save_path / 'video' / f'{video_name}.jpg', format='jpg')
             if mode == 'debug' and step % 10 == 0:
                 print(f'step={step}/{len(episode_data.time_stamp_list)}')
             cur_time = episode_data.time_stamp_list[step]

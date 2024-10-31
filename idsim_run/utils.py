@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import multiprocessing
 from dataclasses import dataclass
+from copy import deepcopy
 from typing import NamedTuple, Optional
 from multiprocessing import Pool
 
@@ -56,11 +57,18 @@ def parallel_eval(configs_dict, config_file_path= None):
     print("test case results: ", test_case_results)
 
 
-def multi_parallel_eval(configs_dict_list, config_file_path= None):
+def multi_parallel_eval(configs_dict_list,legends, config_file_path= None, save_folder = './'):
     # for configs_dict in configs_dict_list:
     #     parallel_eval(configs_dict, config_file_path)
     theme_style = "light"  # only works for AnimationCross
+    # save the config as json file
+    save_folder = os.path.join(save_folder, datetime.datetime.now().strftime("%y%m%d-%H%M%S"))
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder, exist_ok=True)
+    json.dump(configs_dict_list, open(os.path.join(save_folder, "test_configs.json"), "w"), indent=4)
+
     args_list = [get_args(configs_dict, config_file_path) for configs_dict in configs_dict_list]
+
     test_case_lists = [load_test_case(args["test_case_file"], args["test_filter"]) for args in args_list]
     render_only = args_list[0]["render_only"] # NOTE: all the args should have the same render_only value
 
@@ -84,16 +92,29 @@ def multi_parallel_eval(configs_dict_list, config_file_path= None):
     pool.join()
     print("All test cases are done.")
     smo_dict_list = []
+    raw_data_dict_list = []
     for idx, args,config_dict, test_case_list, log_path_root in zip(range(len(args_list)), args_list,configs_dict_list, test_case_lists, log_path_roots):
-        smo_dict = {}
-        smo_dict["network"] = config_dict["ini_network_root"]
-        smo_dict["iteration"] = config_dict["nn_index"]
         for idx, test_case in enumerate(test_case_list):
-            smo_dict.update(cal_action_smoothness(idx, test_case, log_path_root))
+            smo_dict = {}
+            smo_dict["network"] = config_dict["ini_network_root"]
+            smo_dict["iteration"] = config_dict["nn_index"]
             smo_dict["noise_data"] = args["obs_noise_data"]
             smo_dict["noise_type"] = args["obs_noise_type"]
             smo_dict["noise_level"]= config_dict["obs_noise_level"]
+            smo_dict["legend"] = legends[idx]
+            raw_data_dict=  deepcopy(smo_dict)
+            smo_eval, episode_data = cal_action_smoothness(idx, test_case, log_path_root)
+            smo_dict.update(smo_eval)
+            raw_data_dict["episode_data"] = episode_data
             smo_dict_list.append(smo_dict)
+            raw_data_dict_list.append(raw_data_dict)
+    # save data
+    smo_df = pd.DataFrame(smo_dict_list)
+    smo_df.to_csv(os.path.join(save_folder, "smoothness.csv"))
+    # save as pkl for episode data
+    with open(os.path.join(save_folder, "raw_data.pkl"), "wb") as f:
+        pickle.dump(raw_data_dict_list, f)
+    # plot
     plot_smoothness(smo_dict_list)
     return smo_dict_list
 
@@ -302,7 +323,7 @@ def cal_action_smoothness(idx, test_case, log_path_root):
     inc_mwf = cal_mwf(inc_action_seq)
     print(f"inc action smoothness: afr: {inc_afr}, sdv: {inc_sdv}, mwf: {inc_mwf}")
     smo_dict = {"real_afr": afr, "real_sdv": sdv, "real_mwf": mwf, "inc_afr": inc_afr, "inc_sdv": inc_sdv, "inc_mwf": inc_mwf}
-    return smo_dict
+    return smo_dict, episode_data   
 
 def cal_afr(action_seq):
     action_seq = np.array(action_seq)

@@ -23,17 +23,17 @@ exp_discription = 'comparison and ablation study \
 
 script_folder = "compare"
 algs = ['sac','dsac','dsact']
-algs = ['dsac']
-# apprfuncs = ['pismonet','pi','mlp']
+# algs = ['dsac']
+apprfuncs = ['pismonet','pi','mlp']
 apprfuncs = ['mlp']
-envs = ['idsim_multilane_vec']
+envs = ['idsim_cross_vec']
 repeats_num = 1
 surfix_filter = 'offserial.py'
 run_config = {
     # 'env_id': ['gym_carracingraw'],
     'seed':[12345],
     'buffer_max_size':[2000000],
-    # 'max_iter': [100],
+    'max_iter': [1500000],
     # 'buffer_warm_size': [100],
     # 'eval_interval':[2000],
     # 'sample_batch_size':[10],

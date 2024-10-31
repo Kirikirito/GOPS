@@ -1,0 +1,13 @@
+[
+    {
+        "iteration": 1940000,
+        "scenario_root": "/root/idsim-scenarios/idsim-intersection-all-extended",
+        "map_id": "164",
+        "seed": 379963534,
+        "traffic_seed": 1050453603,
+        "ego_id": "85",
+        "warmup_time": 100.0,
+        "scene": "collision"
+    }
+    
+]
