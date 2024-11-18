@@ -148,7 +148,8 @@ if __name__ == "__main__":
     parser.add_argument("--others_hidden_activation", type=str, default="gelu")
     parser.add_argument("--others_output_activation", type=str, default="linear")
     parser.add_argument("--others_out_dim", type=int, default=32)
-    max_iter = 2_000_000
+    parser.add_argument("--max_iter", type=int, default=1_000_000)
+    max_iter = parser.parse_known_args()[0].max_iter
     parser.add_argument("--policy_scheduler", type=json.loads, default={
         "name": "CosineAnnealingLR",
         "params": {

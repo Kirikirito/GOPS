@@ -129,7 +129,8 @@ if __name__ == "__main__":
         parser.add_argument("--policy_output_activation", type=str, default="linear", help="Options: linear/tanh")
     parser.add_argument("--policy_min_log_std", type=int, default=-20)
     parser.add_argument("--policy_max_log_std", type=int, default=0.5)
-    max_iter = 2_000_000
+    parser.add_argument("--max_iter", type=int, default=1_000_000)
+    max_iter = parser.parse_known_args()[0].max_iter
     parser.add_argument("--policy_scheduler", type=json.loads, default={
         "name": "CosineAnnealingLR",
         "params": {
