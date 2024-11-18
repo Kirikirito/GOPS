@@ -113,6 +113,7 @@ class NoiseData(gym.Wrapper):
         if self.record_step_info:
             info["step"] = self._step
             self._step += 1
+        info["raw_obs"] = obs   # add raw observation to info
         return obs_noised, info
 
     def step(self, action: ActType) -> Tuple[ObsType, float, bool, dict]:
@@ -123,6 +124,7 @@ class NoiseData(gym.Wrapper):
         if self.record_step_info:
             info["step"] = self._step
             self._step += 1
+        info["raw_obs"] = obs   # add raw observation to info
         return obs_noised, r, d, info
 
     def seed(self, seed=None):
