@@ -137,12 +137,16 @@ for env_dir_name in env_dir_list:
     file_list = os.listdir(env_model_path)
     for file in file_list:
         if file.endswith(".py") and file[0] != "_" and "base" not in file:
-            env_id = file[:-3]
-            mdl = importlib.import_module(f"gops.env.{env_dir_name}.env_model.{env_id}")
-            env_id_camel = underline2camel(env_id)
-            if hasattr(mdl, "env_model_creator"):
-                register(env_id=env_id, entry_point=getattr(mdl, "env_model_creator"))
-            elif hasattr(mdl, env_id_camel):
-                register(env_id=env_id, entry_point=getattr(mdl, env_id_camel))
-            else:
-                print(f"env {env_id} has no env_model_creator or {env_id_camel} in {env_dir_name}")
+            try:
+                importlib.import_module(f"gops.env.{env_dir_name}.env_model.{file[:-3]}")
+                env_id = file[:-3]
+                mdl = importlib.import_module(f"gops.env.{env_dir_name}.env_model.{env_id}")
+                env_id_camel = underline2camel(env_id)
+                if hasattr(mdl, "env_model_creator"):
+                    register(env_id=env_id, entry_point=getattr(mdl, "env_model_creator"))
+                elif hasattr(mdl, env_id_camel):
+                    register(env_id=env_id, entry_point=getattr(mdl, env_id_camel))
+                else:
+                    print(f"env {env_id} has no env_model_creator or {env_id_camel} in {env_dir_name}")
+            except:
+                RuntimeError(f"Register env model {env_id} failed")
