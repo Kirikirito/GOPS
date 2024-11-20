@@ -165,4 +165,9 @@ tb_tags = {
     "sampler_time": "Time/Sampler time [ms]-RL iter",
     "critic_avg_value": "Train/Critic avg value-RL iter",
     "lips_value": "Lipschitz/Lipschitz value - RL iter",
+    "afr": "Smoothness/Average Fluctuation Rate-RL iter",
+    "afr_std": "Smoothness/Average Fluctuation Rate std-RL iter",
+    "sdv": "Smoothness/Second Derivative Value-RL iter",
+    "sdv_std": "Smoothness/Second Derivative Value std-RL iter",
+    "mwf": "Smoothness/Mean Weighted Frequency-RL iter",
 }

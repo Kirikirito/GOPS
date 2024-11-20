@@ -72,7 +72,7 @@ def create_buffer(**kwargs) -> object:
     trainer_name = _kwargs.get("trainer", None)
     if trainer_name is None or trainer_name.startswith("on"):
         buf = None
-    elif trainer_name.startswith("off_serial"):
+    elif trainer_name.startswith("off_serial") or trainer_name.startswith("off_realserial"):
         buf = buffer_creator(**_kwargs)
     elif trainer_name.startswith("off_async") or trainer_name.startswith("off_sync"):
         import ray

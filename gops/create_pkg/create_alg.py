@@ -83,6 +83,7 @@ def create_alg(**kwargs) -> object:
         or trainer_name.startswith("off_serial")
         or trainer_name.startswith("on_serial")
         or trainer_name.startswith("on_sync")
+        or trainer_name.startswith("off_realserial")
     ):
         algo = algorithm_creator(**_kwargs)
     elif trainer_name.startswith("off_async") or trainer_name.startswith("off_sync"):

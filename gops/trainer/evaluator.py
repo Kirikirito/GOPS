@@ -14,6 +14,10 @@ from collections import deque
 from gops.create_pkg.create_env import create_env
 from gops.create_pkg.create_alg import create_approx_contrainer
 from gops.utils.common_utils import set_seed
+try:
+    from exprunner.utils.default import default_sim_time
+except ImportError:
+    default_sim_time = {}
 
 class ObsBuffer:
     def __init__(self, buffer_size):
@@ -46,6 +50,7 @@ class Evaluator:
             "obs_noise_type": None,
         })
         self.env = create_env(**kwargs)
+        self.env_id = kwargs["env_id"]
         self.obs_buffer = ObsBuffer(kwargs.get("seq_len", 1)) # for backward compatibility
 
         _, self.env = set_seed(kwargs["trainer"], kwargs["seed"], index + 400, self.env)
@@ -103,7 +108,7 @@ class Evaluator:
             reward_list.append(reward)
         eval_dict = {
             "reward_list": reward_list,
-            "action_list": action_list,
+            "action_list": np.array(action_list),
             "obs_list": obs_list,
         }
         if self.eval_save:
@@ -113,13 +118,91 @@ class Evaluator:
                 eval_dict,
             )
         episode_return = sum(reward_list)
-        return episode_return
+        eval_result = {}
+        eval_result["episode_return"] = episode_return
+        eval_result.update(self._cal_afr(eval_dict))
+        eval_result.update(self._cal_sdv(eval_dict))
+        eval_result.update(self._cal_mwf(eval_dict))
+        
+
+        return eval_result
 
     def run_n_episodes(self, n, iteration):
-        episode_return_list = []
-        for _ in range(n):
-            episode_return_list.append(self.run_an_episode(iteration, self.render))
-        return np.mean(episode_return_list)
+        eval_list = [self.run_an_episode(iteration, self.render) for _ in range(n)]
+        avg_eval_dict = {
+         k: np.mean([d[k] for d in eval_list]) for k in eval_list[0].keys()
+        }
+        return avg_eval_dict
 
     def run_evaluation(self, iteration):
         return self.run_n_episodes(self.num_eval_episode, iteration)
+    
+    
+    def _cal_sdv(self, eval_dict):
+        action_seq = eval_dict["action_list"]
+        action_seq = np.array(action_seq)
+        daction_seq = action_seq[1:] - action_seq[:-1]
+        ddaction_seq = daction_seq[1:] - daction_seq[:-1]
+
+        sdv = np.linalg.norm(ddaction_seq, axis=1).mean()
+        sdv_std = np.linalg.norm(ddaction_seq, axis=1).std()
+
+        eval_result = {
+            "sdv": sdv,
+            "sdv_std": sdv_std,
+        }
+        return eval_result
+    
+
+    
+    def _cal_mwf(self, eval_dict):
+        total_mwf = 0
+        env_id = self.env_id
+        if default_sim_time.get(env_id) is None:
+            # print(f"env_id {env_id} is not in default_sim_time, use default value 0.005")
+            T = 0.005
+        else:
+            T = default_sim_time[env_id]
+
+        action_seq = eval_dict["action_list"]
+        N = len(action_seq)
+        dim = action_seq.shape[1]
+        mwf = 0
+        top = 0
+        freq_list = []
+        amp_list = []
+        for i in range(dim):
+            y = action_seq[:,i]
+            yf = np.fft.fft(y)
+            xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
+            # remove first top points
+            top = 0
+            yf[:top] = 0
+            weighted_yf = np.sum(xf[top:N//2]*np.abs(yf[top:N//2]))/(np.sum(np.abs(yf[top:N//2]))+1e-8)
+            avg_amp = np.sum(np.abs(yf[top:N//2]))/(N//2-top)
+            mwf += weighted_yf
+            freq_list.append(xf[top:N//2])
+            amp_list.append(np.abs(yf[top:N//2]))
+            total_mwf += mwf
+            
+        mwf = total_mwf/dim
+
+        eval_result = {
+            "mwf": mwf,
+        }
+        return eval_result
+    
+    
+    def _cal_afr(self, eval_dict):
+        action_seq = eval_dict["action_list"]
+        action_seq = np.array(action_seq)
+        daction_seq = action_seq[1:] - action_seq[:-1]
+        afr = np.linalg.norm(daction_seq, axis=1).mean()
+        afr_std = np.linalg.norm(daction_seq, axis=1).std()
+
+        eval_result = {
+            "afr": afr,
+            "afr_std": afr_std,
+        }
+        return eval_result
+

@@ -11,7 +11,7 @@
 #  Update Date: 2022-04-14, Jiaxin Gao: decrease parameters copy times
 #  Update: 2022-12-05, Wenhan Cao: add annotation
 
-__all__ = ["OffSerialTrainer"]
+__all__ = ["OffRealserialTrainer"]
 
 from cmath import inf
 import os
@@ -25,29 +25,25 @@ import multiprocessing
 import threading
 import io
 from gops.utils.parallel_task_manager import TaskPool
+from gops.utils.log_data import LogData
 from gops.utils.tensorboard_setup import add_scalars, tb_tags
 
-class OffSerialTrainer:
+class OffRealserialTrainer:
     def __init__(self, alg, sampler, buffer, evaluator, **kwargs):
         self.alg = alg
         self.sampler = sampler
         self.buffer = buffer
-        self.per_flag = kwargs["buffer_name"] == "prioritized_replay_buffer"
+        self.per_flag = kwargs["buffer_name"].startswith("prioritized") # FIXME: hard code
         self.evaluator = evaluator
 
         # create center network
         self.networks = self.alg.networks
-
         # create evaluation tasks
         self.evluate_tasks = TaskPool()
         self.last_eval_iteration = 0
-
-        # create sampler tasks
-        self.sampler_tasks = TaskPool()
-        self.last_sampler_network_update_iteration = 0
-        self.sampler_network_update_interval = kwargs.get("sampler_network_update_interval", 100)
-        self.last_sampler_save_iteration = 0
         self.networks.eval()
+        self.sampler.networks = self.networks
+
 
         # initialize center network
         if kwargs["ini_network_dir"] is not None:
@@ -74,12 +70,12 @@ class OffSerialTrainer:
 
         # pre sampling
         while self.buffer.size < kwargs["buffer_warm_size"]:
-            samples, _ = ray.get(self.sampler.sample.remote())
+            samples, _ = self.sampler.sample()
             self.buffer.add_batch(samples)
 
         self.start_time = time.time()
         self.sampler_samples = None
-        self.sampler_tb_dict = None
+        self.sampler_tb_dict = LogData()
         self.total_time = 0
 
     def step(self):
@@ -96,11 +92,11 @@ class OffSerialTrainer:
 
         # sampling
         if self.iteration % self.sample_interval == 0:
-            with torch.no_grad():
-                if self.sampler_tasks.count == 0:
-                    # There is no sampling task, add one.
-                    self._add_sample_task()
-        
+            with ModuleOnDevice(self.networks, "cpu"):
+                sampler_samples, sampler_tb_dict = self.sampler.sample()
+            self.buffer.add_batch(sampler_samples)
+            self.sampler_tb_dict.add_average(sampler_tb_dict)
+
         # replay
         replay_samples = self.buffer.sample_batch(self.replay_batch_size)
 
@@ -108,6 +104,7 @@ class OffSerialTrainer:
         for k, v in replay_samples.items():
             replay_samples[k] = v.to(self.networks.device)
 
+        self.networks.train()
         if self.per_flag:
             alg_tb_dict, idx, new_priority = self.alg.local_update(
                 replay_samples, self.iteration
@@ -115,27 +112,13 @@ class OffSerialTrainer:
             self.buffer.update_batch(idx, new_priority)
         else:
             alg_tb_dict = self.alg.local_update(replay_samples, self.iteration)
-
-        # sampling
-        if self.iteration % self.sample_interval == 0:
-            with torch.no_grad():
-                while self.sampler_tasks.completed_num == 0:
-                    # There is no completed sampling task, wait.
-                    time.sleep(0.001)
-                # Sampling task is completed, get samples and add another one.
-                objID = next(self.sampler_tasks.completed())[1]
-                sampler_samples, sampler_tb_dict = ray.get(objID)
-                self._add_sample_task()
-                self.buffer.add_batch(sampler_samples)
-                if (self.iteration - self.last_sampler_save_iteration) >= self.log_save_interval:
-                    add_scalars(sampler_tb_dict, self.writer, step=self.iteration)
-                    self.last_sampler_save_iteration = self.iteration
+        self.networks.eval()
 
         # log
         if self.iteration % self.log_save_interval == 0:
             print("Iter = ", self.iteration)
             add_scalars(alg_tb_dict, self.writer, step=self.iteration)
-
+            add_scalars(self.sampler_tb_dict.pop(), self.writer, step=self.iteration)
         # evaluate
         if self.iteration - self.last_eval_iteration >= self.eval_interval or self.iteration == 0 or self.iteration == self.max_iteration:
             if self.evluate_tasks.count == 0:
@@ -212,7 +195,7 @@ class OffSerialTrainer:
         self.writer.add_scalar(
             tb_tags["TAR of collected samples"],
             total_avg_return,
-            ray.get(self.sampler.get_total_sample_number.remote()),
+            self.sampler.get_total_sample_number(),
         )
         
         # Smoothness
@@ -250,7 +233,7 @@ class OffSerialTrainer:
             self.networks.state_dict(),
             self.save_folder + "/apprfunc/apprfunc_{}.pkl".format(self.iteration),
         )
-        self.sampler.save.remote(self.save_folder + "/sampler")
+        self.sampler.save(self.save_folder + "/sampler")
         
 
     def _add_eval_task(self):

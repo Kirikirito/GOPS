@@ -72,7 +72,7 @@ def create_sampler(**kwargs,) -> object:
             sam = ray.remote(num_gpus=0.5)(sampler_creator).remote( **_kwargs)
         else:
             sam = ray.remote(num_cpus=1)(sampler_creator).remote( **_kwargs)
-    elif trainer_name is None or trainer_name.startswith("off_serial") or trainer_name.startswith("on_serial"):
+    elif trainer_name is None or trainer_name.startswith("off_realserial") or trainer_name.startswith("on_serial"):
         sam = sampler_creator(**_kwargs)
     elif (
         trainer_name.startswith("off_async")
