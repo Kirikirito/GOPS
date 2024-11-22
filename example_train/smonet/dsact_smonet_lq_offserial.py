@@ -56,8 +56,16 @@ if __name__ == "__main__":
 
     ################################################
     # 2.1 Parameters of value approximate function
-    parser.add_argument("--loss_weight", type=float, default=0.1, help="tau decay factor")
+    parser.add_argument("--freeze_q", type=bool, default=True, help="Freeze Q")
+    parser.add_argument("--loss_weight", type=float, default=1, help="tau decay factor")
+    parser.add_argument("--value_kernel", type=str, default= '1_8_1', help="kernel size")
+    parser.add_argument("--policy_kernel", type=str, default= '1_8_1', help="kernel size")
     loss_weight = parser.parse_known_args()[0].loss_weight
+    value_kernel = parser.parse_known_args()[0].value_kernel
+    value_kernel_size = [int(i) for i in value_kernel.split('_')]
+    policy_kernel = parser.parse_known_args()[0].policy_kernel
+    policy_kernel_size = [int(i) for i in policy_kernel.split('_')]
+    
     parser.add_argument("--tau_layer_num", type=int, default=2, help="Number of tau layers")
     parser.add_argument(
         "--value_func_name",
@@ -73,7 +81,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--value_output_activation", type=str, default="linear", help="Options: linear/tanh")
 
-    parser.add_argument("--value_kernel_size", type=int,nargs='+', default= [1,seq_len,1], help="kernel size for each layer")
+    parser.add_argument("--value_kernel_size", type=int,nargs='+', default= value_kernel_size, help="kernel size for each layer")
     parser.add_argument("--value_loss_weight", type=float, default=0.0, help="tau decay factor")
 
     # 2.2 Parameters of policy approximate function
@@ -100,7 +108,7 @@ if __name__ == "__main__":
     parser.add_argument("--policy_min_log_std", type=int, default=-20)
     parser.add_argument("--policy_max_log_std", type=int, default=0.5)
 
-    parser.add_argument("--policy_kernel_size", type=int,nargs='+', default= [1,seq_len,1], help="kernel size for each layer")
+    parser.add_argument("--policy_kernel_size", type=int,nargs='+', default= policy_kernel_size, help="kernel size for each layer")
     parser.add_argument("--policy_loss_weight", type=float, default=loss_weight, help="tau decay factor")
 
     ################################################
@@ -161,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval_interval", type=int, default=500)
     parser.add_argument("--eval_save", type=str, default=False, help="save evaluation data")
     parser.add_argument("--fixed_eval_seed", type=bool, default=True, help="Fixed evaluation seed")
+    parser.add_argument("--eval_seed", type=int, default=12345, help="Evaluation seed")
     
     # set train_space & work_space
     parser.add_argument("--initial_distribution", type=str, default="uniform")

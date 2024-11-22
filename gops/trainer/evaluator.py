@@ -51,6 +51,7 @@ class Evaluator:
         })
         self.env = create_env(**kwargs)
         self.env_id = kwargs["env_id"]
+
         self.obs_buffer = ObsBuffer(kwargs.get("seq_len", 1)) # for backward compatibility
 
         _, self.env = set_seed(kwargs["trainer"], kwargs["seed"], index + 400, self.env)
@@ -71,11 +72,18 @@ class Evaluator:
 
         self.print_time = 0
         self.print_iteration = -1
+        
+        self.fixed_eval_seed = kwargs.get("fixed_eval_seed", False)
+        if self.fixed_eval_seed:
+            init_seed = kwargs.get("eval_seed", 0)
+            self.seed_list = [init_seed + i for i in  range(self.num_eval_episode)]
+        else:
+            self.seed_list = [None for _ in range(self.num_eval_episode)]
 
     def load_state_dict(self, state_dict):
         self.networks.load_state_dict(state_dict)
 
-    def run_an_episode(self, iteration, render=True):
+    def run_an_episode(self, iteration, render=True,seed=None):
         if self.print_iteration != iteration:
             self.print_iteration = iteration
             self.print_time = 0
@@ -84,6 +92,8 @@ class Evaluator:
         obs_list = []
         action_list = []
         reward_list = []
+        if seed is not None:
+            self.env.seed(seed)
         obs, info = self.env.reset()
         done = 0
         info["TimeLimit.truncated"] = False
@@ -128,7 +138,7 @@ class Evaluator:
         return eval_result
 
     def run_n_episodes(self, n, iteration):
-        eval_list = [self.run_an_episode(iteration, self.render) for _ in range(n)]
+        eval_list = [self.run_an_episode(iteration, self.render,self.seed_list[i]) for i in range(n)]
         avg_eval_dict = {
          k: np.mean([d[k] for d in eval_list]) for k in eval_list[0].keys()
         }
@@ -196,7 +206,9 @@ class Evaluator:
     def _cal_afr(self, eval_dict):
         action_seq = eval_dict["action_list"]
         action_seq = np.array(action_seq)
+        #print(action_seq.shape)
         daction_seq = action_seq[1:] - action_seq[:-1]
+        #print(daction_seq[0:10])
         afr = np.linalg.norm(daction_seq, axis=1).mean()
         afr_std = np.linalg.norm(daction_seq, axis=1).std()
 

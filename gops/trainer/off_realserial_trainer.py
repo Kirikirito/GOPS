@@ -60,6 +60,7 @@ class OffRealserialTrainer:
         self.save_folder = kwargs["save_folder"]
         self.iteration = 0
         self.use_adapter = kwargs.get("policy_adapter_layers", None) is not None
+        self.freeze_q = kwargs.get("freeze_q", False)
 
         self.writer = SummaryWriter(log_dir=self.save_folder, flush_secs=20)
         # flush tensorboard at the beginning
@@ -260,8 +261,14 @@ class OffRealserialTrainer:
         #self.networks.log_alpha.requires_grad = False
         # self.networks.q1.freeze()
         # self.networks.q2.freeze()
+        if self.freeze_q:
+            if hasattr(self.networks, "q1"):
+                self.networks.q1.freeze()
+                self.networks.q2.freeze()
+            if hasattr(self.networks, "q"):
+                self.networks.q.freeze()
         self.buffer.change_mode()
-        self.sampler.change_mode.remote()
+        self.sampler.change_mode()
         if self.use_adapter:
             self.networks.policy.enable_adapter()
             self.alg.change_mode()

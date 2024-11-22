@@ -119,12 +119,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--trainer",
         type=str,
-        default="off_serial_trainer",
+        default="off_realserial_trainer",
         help="Options: on_serial_trainer, on_sync_trainer, off_serial_trainer, off_async_trainer",
     )
     # Maximum iteration number
-    parser.add_argument("--max_iteration", type=int, default=80)
-    parser.add_argument("--freeze_iteration", type=int, default=30)
+    parser.add_argument("--max_iteration", type=int, default=15000)
+    parser.add_argument("--freeze_iteration", type=int, default=5000)
     parser.add_argument(
         "--ini_network_dir",
         type=str,
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     env = create_env(**{**args, "vector_env_num": None})
     args = init_args(env, **args)
 
-    #start_tensorboard(args["save_folder"])
+    start_tensorboard(args["save_folder"])
     # Step 1: create algorithm and approximate function
     alg = create_alg(**args)
     # Step 2: create sampler in trainer
