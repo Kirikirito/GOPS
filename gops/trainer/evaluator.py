@@ -79,11 +79,21 @@ class Evaluator:
             self.seed_list = [init_seed + i for i in  range(self.num_eval_episode)]
         else:
             self.seed_list = [None for _ in range(self.num_eval_episode)]
+            
+        self.fixed_init_state = kwargs.get("fixed_init_state", False)
+        if self.fixed_init_state:
+            self.init_states = []
+            for i in range(self.num_eval_episode):
+                self.env.seed(self.seed_list[i])
+                obs, info = self.env.reset()
+                obs = info.get("raw_obs", obs)
+                self.init_states.append(obs)
+                
 
     def load_state_dict(self, state_dict):
         self.networks.load_state_dict(state_dict)
 
-    def run_an_episode(self, iteration, render=True,seed=None):
+    def run_an_episode(self, iteration, episode, render=True):
         if self.print_iteration != iteration:
             self.print_iteration = iteration
             self.print_time = 0
@@ -92,9 +102,15 @@ class Evaluator:
         obs_list = []
         action_list = []
         reward_list = []
+        seed = self.seed_list[episode]
         if seed is not None:
             self.env.seed(seed)
-        obs, info = self.env.reset()
+            
+        if self.fixed_init_state:
+            init_obs = self.init_states[episode]
+            obs, info = self.env.reset(init_state=init_obs)
+        else:
+            obs, info = self.env.reset()
         done = 0
         info["TimeLimit.truncated"] = False
         self.obs_buffer.clear()
@@ -138,7 +154,7 @@ class Evaluator:
         return eval_result
 
     def run_n_episodes(self, n, iteration):
-        eval_list = [self.run_an_episode(iteration, self.render,self.seed_list[i]) for i in range(n)]
+        eval_list = [self.run_an_episode(iteration, i, render=self.render) for i in range(n)]
         avg_eval_dict = {
          k: np.mean([d[k] for d in eval_list]) for k in eval_list[0].keys()
         }
