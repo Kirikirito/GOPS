@@ -267,7 +267,10 @@ class OffSerialTrainer:
         with torch.no_grad():
             if (self.iteration - self.last_sampler_network_update_iteration) >= self.sampler_network_update_interval:
                 self.last_sampler_network_update_iteration = self.iteration
-                self.sampler.load_state_dict.remote(self.networks.state_dict())
+                ret = self.sampler.load_state_dict.remote(self.networks.state_dict())
+                ret = ray.get(ret)
+                # wait for the sampler to load the network
+                
             self.sampler_tasks.add(
                 self.sampler,
                 self.sampler.sample.remote()
