@@ -266,8 +266,8 @@ if __name__ == "__main__":
     ################################################
     # 6. Parameters for evaluator
     parser.add_argument("--evaluator_name", type=str, default="idsim_train_evaluator")
-    parser.add_argument("--num_eval_episode", type=int, default=10)
-    parser.add_argument("--eval_interval", type=int, default=5000)
+    parser.add_argument("--num_eval_episode", type=int, default=20)
+    parser.add_argument("--eval_interval", type=int, default=10000)
     parser.add_argument("--eval_save", type=str, default=False, help="save evaluation data")
 
     ################################################
