@@ -70,10 +70,12 @@ class IdsimTrainEvaluator(Evaluator):
 
         done = 0
         info["TimeLimit.truncated"] = False
+        self.obs_buffer.clear()
         while not (done or info["TimeLimit.truncated"]):
             batch_obs = torch.from_numpy(np.expand_dims(obs, axis=0).astype("float32"))
+            self.obs_buffer.add(batch_obs)
             with torch.no_grad():
-                logits = self.networks.policy(batch_obs.to(self.device))
+                logits = self.networks.policy(self.obs_buffer.get().to(self.device))
                 action_distribution = self.networks.create_action_distributions(logits)
             action = action_distribution.mode()
             action = action.cpu().detach().numpy()[0]

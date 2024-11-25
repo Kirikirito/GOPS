@@ -102,7 +102,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         idxes = tree_idxes - self.max_size + 1
 
-        batch = self.buf.sample(idxes, batch_size, self.seq_len, add_noise = self.add_noise)
+        batch = self.buf.sample(idxes, batch_size, self.seq_len, enable_noise = self.add_noise)
         batch["idx"] = torch.as_tensor(tree_idxes, dtype=torch.int32)
         batch["weight"] = torch.as_tensor(weights, dtype=torch.float32)
         return batch

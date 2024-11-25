@@ -79,7 +79,7 @@ class BufferData:
 
 
     
-    def sample(self, idxes: np.ndarray,batch_size:int, seq_len: int =1, add_noise = False) -> dict:
+    def sample(self, idxes: np.ndarray,batch_size:int, seq_len: int =1, enable_noise = False) -> dict:
         batch = {}
         assert seq_len >= 1
         if seq_len ==1:
@@ -108,7 +108,7 @@ class BufferData:
             if "step" in self.additional_info.keys():
                 batch["step"] = torch.as_tensor(np.stack([self.data["step"][idxes] for idxes in idxes_list], axis=1), dtype=torch.float32)
                 self.check_conti(batch["step"])
-            if add_noise:
+            if enable_noise:
                 obs_noise = torch.as_tensor(np.stack([self.data["noise"][idxes] for idxes in idxes_list], axis=1), dtype=torch.float32)
                 noise_level_scale = torch.randint(low=0, high=3, size=(batch_size,1), dtype=torch.float32)/3
                 batch["raw_obs"] = batch["obs"]
@@ -214,7 +214,7 @@ class ReplayBuffer:
 
     def sample_batch(self, batch_size: int) -> dict:
         idxes = np.random.randint(0, len(self), size=batch_size)
-        batch = self.buf.sample(idxes, batch_size, self.seq_len, add_noise = self.enable_noise)
+        batch = self.buf.sample(idxes, batch_size, self.seq_len, enable_noise = self.enable_noise)
         return batch
 
     def sample_statistic(self, iteration, batch_size: int = 1024) -> dict:

@@ -37,7 +37,6 @@ class OffSerialTrainer:
 
         # create center network
         self.networks = self.alg.networks
-
         # create evaluation tasks
         self.evluate_tasks = TaskPool()
         self.last_eval_iteration = 0
@@ -48,6 +47,10 @@ class OffSerialTrainer:
         self.sampler_network_update_interval = kwargs.get("sampler_network_update_interval", 100)
         self.last_sampler_save_iteration = 0
         self.networks.eval()
+        
+        self.use_gpu = kwargs["use_gpu"]
+        if self.use_gpu:
+            self.networks.cuda()
 
         # initialize center network
         if kwargs["ini_network_dir"] is not None:
@@ -64,6 +67,7 @@ class OffSerialTrainer:
         self.save_folder = kwargs["save_folder"]
         self.iteration = 0
         self.use_adapter = kwargs.get("policy_adapter_layers", None) is not None
+        self.freeze_q = kwargs.get("freeze_q", False)
 
         self.writer = SummaryWriter(log_dir=self.save_folder, flush_secs=20)
         # flush tensorboard at the beginning
@@ -81,6 +85,17 @@ class OffSerialTrainer:
         self.sampler_samples = None
         self.sampler_tb_dict = None
         self.total_time = 0
+        
+    def _replay(self):
+        replay_samples = self.buffer.sample_batch(self.replay_batch_size)
+        if self.use_gpu:
+            for k, v in replay_samples.items():
+                replay_samples[k] = v.to(self.networks.device, non_blocking=True)
+            torch.cuda.synchronize()
+        else:
+            for k, v in replay_samples.items():
+                replay_samples[k] = v.to(self.networks.device)
+        return replay_samples
 
     def step(self):
         # trainning phrase
@@ -102,11 +117,7 @@ class OffSerialTrainer:
                     self._add_sample_task()
         
         # replay
-        replay_samples = self.buffer.sample_batch(self.replay_batch_size)
-
-        # learning
-        for k, v in replay_samples.items():
-            replay_samples[k] = v.to(self.networks.device)
+        replay_samples = self._replay()
 
         if self.per_flag:
             alg_tb_dict, idx, new_priority = self.alg.local_update(
@@ -280,8 +291,15 @@ class OffSerialTrainer:
         #self.networks.log_alpha.requires_grad = False
         # self.networks.q1.freeze()
         # self.networks.q2.freeze()
+        if self.freeze_q:
+            if hasattr(self.networks, "q1"):
+                self.networks.q1.freeze()
+                self.networks.q2.freeze()
+            if hasattr(self.networks, "q"):
+                self.networks.q.freeze()
         self.buffer.change_mode()
         self.sampler.change_mode.remote()
+        self.evaluator.change_mode().remote()
         if self.use_adapter:
             self.networks.policy.enable_adapter()
             self.alg.change_mode()
