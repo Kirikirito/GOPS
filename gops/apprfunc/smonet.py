@@ -68,8 +68,8 @@ class ConvFilter(nn.Module):
     
     # @cal_ave_exec_time(print_interval=500) 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        tau = self.tau_layer(x.transpose(2,1).detach())
-        tau = tau.transpose(2,1)
+        tau = self.tau_layer(x.transpose(2,1).detach()) #  transposed = (batch_size, features, seq_len)
+        tau = tau.transpose(2,1) # tau = (batch_size, seq_len- kernel_size + 1, features)
         output = self.cal_output(tau,x,self.kernel_size,self.seq_len)
         if tau.requires_grad and self.training and self.loss_weight > 0 and self.need_regularization:
             self.update_loss_tau(tau)
@@ -109,6 +109,7 @@ class FLinear(nn.Linear):
         seq_len: int = 1,
         kernel_size: int = 1,
         tau_layer_num: int = 1,
+        add_sn: bool = False,
     ) -> None:
         
         super(FLinear, self).__init__(   
@@ -120,6 +121,7 @@ class FLinear(nn.Linear):
         self.kernel_size = kernel_size
         self.seq_len = seq_len
         self.seq_input = True
+        self.add_sn = add_sn # add spectral normalization
         if kernel_size == 1:
             pass
         else:
@@ -132,7 +134,23 @@ class FLinear(nn.Linear):
             input = self.conv(input)
         output = self.cat_forward(input)  
         return output
+    def spectral_norm(self, weight_matrix, n_iter=1):
+        # weight_matrix: 线性层的权重矩阵
+        w_shape = weight_matrix.shape
+        weight_matrix = weight_matrix.view(w_shape[0], -1)
+        
+        # 初始化 u 向量
+        u = torch.randn(weight_matrix.size(0), 1)
+        u = F.normalize(u, dim=0, eps=1e-12)
+        
+        # power iteration to estimate the largest singular value
+        for _ in range(n_iter):
+            v = F.normalize(torch.matmul(weight_matrix.t(), u), dim=0, eps=1e-12)
+            u = F.normalize(torch.matmul(weight_matrix, v), dim=0, eps=1e-12)
     
+        # 计算最大奇异值
+        sigma = torch.dot(u.squeeze(), torch.matmul(weight_matrix, v).squeeze())
+        return sigma
     def cat_forward(self, input):
         if self.seq_len == 1 or input.dim() <= 2:
             output = super(FLinear, self).forward(input)
@@ -145,6 +163,9 @@ class FLinear(nn.Linear):
                 out_cur = super(FLinear, self).forward(input_cur)
                 output = torch.cat((out_pre, out_cur), dim=1)
             else:
+                if self.add_sn:
+                    pass
+                    
                 output = super(FLinear, self).forward(input_cur)
         return output
       

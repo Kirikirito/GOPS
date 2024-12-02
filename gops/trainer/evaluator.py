@@ -60,7 +60,6 @@ class Evaluator:
             self.seq_len_after_freeze = self.seq_len
 
         self.obs_buffer = ObsBuffer(self.seq_len)
-        print(f"seq_len: {self.seq_len}")
 
         _, self.env = set_seed(kwargs["trainer"], kwargs["seed"], index + 400, self.env)
 

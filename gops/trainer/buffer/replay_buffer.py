@@ -80,6 +80,7 @@ class BufferData:
 
     
     def sample(self, idxes: np.ndarray,batch_size:int, seq_len: int =1, enable_noise = False) -> dict:
+        # sequence first [batch_size, seq_len, dim]
         batch = {}
         assert seq_len >= 1
         if seq_len ==1:
@@ -247,3 +248,32 @@ class ReplayBuffer:
                 f"{yref[-1]:.2f}"
             )
         }
+        
+    def save_hd5(self, path):
+        ''' save replay buffer to hd5 file'''
+        data = self.buf.data
+        file_path = path +  "/buffer.h5"
+        import h5py
+        with h5py.File(file_path, 'w') as f:
+            for k, v in data.items():
+                f.create_dataset(k, data=v)
+            f.create_dataset("size", data=self.buf.size)
+            f.create_dataset("ptr", data=self.buf.ptr)
+            f.create_dataset("prev_ptr", data=self.buf.prev_ptr)
+        return
+    
+    def load_hd5(self, path):
+        ''' load replay buffer from hd5 file'''
+        import h5py
+        file_path = path +  "/buffer.h5"
+        with h5py.File(file_path, 'r') as f:
+            for k in self.buf.data.keys():
+                self.buf.data[k] = f[k][()]
+            self.buf.size = f["size"][()]
+            self.buf.ptr = f["ptr"][()]
+            self.buf.prev_ptr = f["prev_ptr"][()]
+        # handle uncontinuous sequence in buffer due to the loading
+        self.buf.data["finished"][self.buf.prev_ptr] = True
+        return
+        
+        

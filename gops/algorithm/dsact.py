@@ -82,7 +82,21 @@ class ApproxContainer(ApprBase):
     def create_action_distributions(self, logits):
         return self.policy.get_act_dist(logits)
 
-
+    def save_optimizer(self, path):
+        optimizer_dict = {
+            "q1_optimizer": self.q1_optimizer.state_dict(),
+            "q2_optimizer": self.q2_optimizer.state_dict(),
+            "policy_optimizer": self.policy_optimizer.state_dict(),
+            "alpha_optimizer": self.alpha_optimizer.state_dict(),
+        }
+        torch.save(optimizer_dict, path + "/optimizer.pth")
+        
+    def load_optimizer(self, path):
+        optimizer_dict = torch.load(path + "/optimizer.pth")
+        self.q1_optimizer.load_state_dict(optimizer_dict["q1_optimizer"])
+        self.q2_optimizer.load_state_dict(optimizer_dict["q2_optimizer"])
+        self.policy_optimizer.load_state_dict(optimizer_dict["policy_optimizer"])
+        self.alpha_optimizer.load_state_dict(optimizer_dict["alpha_optimizer"])
 class DSACT(AlgorithmBase):
     """DSAC algorithm with three refinements, higher performance and more stable.
 
