@@ -73,7 +73,7 @@ if __name__ == "__main__":
         default="ActionValueDistri",
         help="Options: StateValue/ActionValue/ActionValueDis/ActionValueDistri",
     )
-    parser.add_argument("--value_func_type", type=str, default="SMONET", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
+    parser.add_argument("--value_func_type", type=str, default="SMONET4", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
     value_func_type = parser.parse_known_args()[0].value_func_type
     parser.add_argument("--value_hidden_sizes", type=list, default=[64,64])
     parser.add_argument(
@@ -92,7 +92,7 @@ if __name__ == "__main__":
         help="Options: None/DetermPolicy/FiniteHorizonPolicy/StochaPolicy",
     )
     parser.add_argument(
-        "--policy_func_type", type=str, default="SMONET", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS"
+        "--policy_func_type", type=str, default="SMONET4", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS"
     )
     parser.add_argument(
         "--policy_act_distribution",
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     env = create_env(**{**args, "vector_env_num": None})
     args = init_args(env, **args)
 
-    #start_tensorboard(args["save_folder"])
+    # start_tensorboard(args["save_folder"])
     # Step 1: create algorithm and approximate function
     alg = create_alg(**args)
     # Step 2: create sampler in trainer
