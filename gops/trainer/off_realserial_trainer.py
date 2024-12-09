@@ -48,6 +48,13 @@ class OffRealserialTrainer:
         # initialize center network
         if kwargs["ini_network_dir"] is not None:
             self.networks.load_state_dict(torch.load(kwargs["ini_network_dir"]))
+        self.ini_buffer = kwargs.get("ini_buffer", None)
+        if self.ini_buffer is not None:
+            self.buffer.load_hd5(kwargs["ini_buffer"])
+            if hasattr(self.alg.networks, "load_optimizer"):
+                self.alg.networks.load_optimizer(kwargs["ini_buffer"])
+                
+            print("Buffer is loaded from ", kwargs["ini_buffer"])
 
         self.replay_batch_size = kwargs["replay_batch_size"]
         self.max_iteration = kwargs["max_iteration"]
@@ -61,6 +68,11 @@ class OffRealserialTrainer:
         self.iteration = 0
         self.use_adapter = kwargs.get("policy_adapter_layers", None) is not None
         self.freeze_q = kwargs.get("freeze_q", False)
+        self.freeze_policy = kwargs.get("freeze_policy", False)
+        
+        # save buffer
+        self.save_buffer = kwargs.get("save_buffer", False)
+
 
         self.writer = SummaryWriter(log_dir=self.save_folder, flush_secs=20)
         # flush tensorboard at the beginning
@@ -70,7 +82,7 @@ class OffRealserialTrainer:
         self.writer.flush()
 
         # pre sampling
-        while self.buffer.size < kwargs["buffer_warm_size"]:
+        while self.buffer.size < kwargs["buffer_warm_size"] and not self.ini_buffer:
             samples, _ = self.sampler.sample()
             self.buffer.add_batch(samples)
 
@@ -227,6 +239,7 @@ class OffRealserialTrainer:
         print("Training is finished!")
         self.iteration = self.max_iteration
         self.save_apprfunc()
+
         self.writer.flush()
 
     def save_apprfunc(self):
@@ -257,7 +270,17 @@ class OffRealserialTrainer:
                 self.sampler.sample.remote()
             )
     def change_train_phase(self):
-        #self.networks.policy.freeze()
+        self.save_apprfunc()
+        if self.save_buffer:
+            buffer_dir = "/root/autodl-tmp/thesis" + self.save_folder
+            if not os.path.exists(buffer_dir):
+                os.makedirs(buffer_dir)
+            self.buffer.save_hd5(buffer_dir)
+            if hasattr(self.alg.networks, "save_optimizer"):
+                self.alg.networks.save_optimizer(buffer_dir)
+                
+        if self.freeze_policy:
+            self.networks.policy.freeze()
         #self.networks.log_alpha.requires_grad = False
         # self.networks.q1.freeze()
         # self.networks.q2.freeze()

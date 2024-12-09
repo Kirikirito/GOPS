@@ -175,6 +175,7 @@ class ReplayBuffer:
         self.max_size = kwargs["buffer_max_size"]
         self.seq_len = kwargs.get("seq_len", 1)
         self.freeze_iteration = kwargs.get("freeze_iteration", 0)
+        self.max_iteration = kwargs["max_iteration"]
         if self.freeze_iteration > 0:
             self.seq_len_after_freeze = self.seq_len
             self.seq_len = 1

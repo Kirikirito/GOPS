@@ -145,7 +145,7 @@ class NoiseData(gym.Wrapper):
         else:
             env_info = self.env.additional_info
         if self.add_to_info:
-            noise_sample = self.noise_observation(self.env.observation_space.sample())[1]
+            noise_sample = self.env.observation_space.sample()
             env_info["noise"] = {"shape": noise_sample.shape, "dtype": noise_sample.dtype}
         if self.record_step_info:
             env_info["step"] = {"shape": (1,), "dtype": np.int32}
