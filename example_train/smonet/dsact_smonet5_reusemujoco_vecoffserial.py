@@ -43,7 +43,7 @@ if __name__ == "__main__":
     # parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymsnaium-style")
 
     parser.add_argument("--obs_noise_type", type=str, default= 'uniform')
-    parser.add_argument("--obs_noise_data", type=float,nargs='+', default= [0, 0.1], help="noise data")
+    parser.add_argument("--obs_noise_data", type=float,nargs='+', default= [0, 0.05], help="noise data")
     parser.add_argument("--add_to_info", type=bool, default= True)
     parser.add_argument("--rel_noise_scale", type=bool, default= True)
     parser.add_argument("--augment_act", type=bool,default=False, help="Augment action")
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     # 2.1 Parameters of value approximate function
     parser.add_argument("--freeze_q", type=bool, default=False, help="Freeze Q")
     parser.add_argument("--freeze_policy", type=bool, default=False, help="Freeze Q")
-    parser.add_argument("--loss_weight", type=float, default=0.001, help="tau decay factor")
+    parser.add_argument("--loss_weight", type=float, default=0, help="tau decay factor")
     parser.add_argument("--value_kernel", type=str, default= '1_1_5_4', help="kernel size")
     parser.add_argument("--policy_kernel", type=str, default= '1_1_5_4', help="kernel size")
     loss_weight = parser.parse_known_args()[0].loss_weight
@@ -135,11 +135,11 @@ if __name__ == "__main__":
     )
     # Maximum iteration number
     parser.add_argument("--max_iteration", type=int, default=300_000)
-    parser.add_argument("--freeze_iteration", type=int, default=1)
+    parser.add_argument("--freeze_iteration", type=int, default=10000)
     parser.add_argument(
         "--ini_network_dir",
         type=str,
-        default="/root/thesisexp/data/training/mujoco_smonet5_punish/241130-111459/dsact-smonet5-mujoco-gym_humanoid-12345-1_1_5_4-0.01-False-1800000-1500000-run0/apprfunc/apprfunc_1500000.pkl"
+        default="/root/thesisexp/data/training/mujoco_smonet5_punish_noise/241202-235546/dsact-smonet5-mujoco-gym_humanoid-12345-1_1_5_4-0.001-False-run0/apprfunc/apprfunc_1500000.pkl"
     )
     parser.add_argument(
         "--save_buffer",
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ini_buffer",
         type=str,
-        default="/root/autodl-tmp/thesis/root/thesisexp/data/training/mujoco_smonet5_punish/241130-111459/dsact-smonet5-mujoco-gym_humanoid-12345-1_1_5_4-0.01-False-1800000-1500000-run0"
+        default="/root/autodl-tmp/thesis/root/thesisexp/data/training/mujoco_smonet5_punish_noise/241202-235546/dsact-smonet5-mujoco-gym_humanoid-12345-1_1_5_4-0.001-False-run0"
         # default="/root/autodl-tmp/thesis/root/thesisexp/gops/results/gym_humanoid/DSACT_241202-203550"
     )
     trainer_type = parser.parse_known_args()[0].trainer
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     # 6. Parameters for evaluator
     parser.add_argument("--evaluator_name", type=str, default="evaluator")
     parser.add_argument("--num_eval_episode", type=int, default=10)
-    parser.add_argument("--eval_interval", type=int, default=2500)
+    parser.add_argument("--eval_interval", type=int, default=1000)
     parser.add_argument("--eval_save", type=str, default=False, help="save evaluation data")
     parser.add_argument("--fixed_eval_seed", type=bool, default=True, help="Fixed evaluation seed")
     parser.add_argument("--eval_seed", type=int, default=12345, help="Evaluation seed")

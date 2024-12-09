@@ -128,7 +128,7 @@ if __name__ == "__main__":
     )
     # Maximum iteration number
     parser.add_argument("--max_iteration", type=int, default=1800_000)
-    parser.add_argument("--freeze_iteration", type=int, default=1800_000)
+    parser.add_argument("--freeze_iteration", type=int, default=1800_001)
     parser.add_argument(
         "--ini_network_dir",
         type=str,
