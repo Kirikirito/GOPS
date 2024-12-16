@@ -41,7 +41,7 @@ class IdsimTrainEvaluator(Evaluator):
         self.max_iteration = kwargs["max_iteration"]
         self.env_seed_rng = np.random.default_rng(kwargs["seed"])
 
-    def run_an_episode(self, iteration, render=True):
+    def run_an_episode(self, iteration, episode, render=True):
         if self.print_iteration != iteration:
             self.print_iteration = iteration
             self.print_time = 0
@@ -50,7 +50,10 @@ class IdsimTrainEvaluator(Evaluator):
 
 
         idsim_tb_eval_dict = {key: 0. for key in idsim_tb_tags_dict.keys()}
-        env_seed = self.env_seed_rng.integers(0, 2**30)
+        if self.fixed_eval_seed:
+            env_seed = self.seed_list[episode]
+        else:
+            env_seed = self.env_seed_rng.integers(1, 2**32)
         obs, info = self.env.reset(seed=env_seed)
 
         eval_result = EvalResult()
@@ -104,7 +107,7 @@ class IdsimTrainEvaluator(Evaluator):
         return idsim_tb_eval_dict
 
     def run_n_episodes(self, n, iteration):
-        eval_list = [self.run_an_episode(iteration, self.render) for _ in range(n)]
+        eval_list = [self.run_an_episode(iteration, i, render=self.render) for i in range(n)]
         avg_idsim_tb_eval_dict = {
             k: np.mean([d[k] for d in eval_list]) for k in eval_list[0].keys()
             }

@@ -350,8 +350,9 @@ class StochaPolicy(nn.Module, Action_Distribution):
         self._is_freeze = False
 
         self.pi_net = kwargs["pi_net"]
-        self.freeze_pi_net = kwargs["freeze_pi_net"] == "actor" 
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "actor" or kwargs["freeze_pi_net"] == "both"
         input_dim = self.pi_net.output_dim
+
         # mean and log_std are calculated by different MLP
         if self.std_type == "mlp_separated":
             pi_sizes = [input_dim] + list(hidden_sizes) + [act_dim]
@@ -480,7 +481,7 @@ class ActionValue(nn.Module, Action_Distribution):
         self.obs_dim = obs_dim
         
         self.pi_net = kwargs["pi_net"]
-        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic"
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic" or kwargs["freeze_pi_net"] == "both"
         input_dim = self.pi_net.output_dim + act_dim
         
         hidden_sizes = kwargs["hidden_sizes"]
@@ -499,7 +500,20 @@ class ActionValue(nn.Module, Action_Distribution):
             loss_weight = loss_weight,
             tau_layer_num=tau_layer_num,
         )
+        self.q.no_seq_len()
         self.action_distribution_cls = kwargs["action_distribution_cls"]
+        rew_comp_dim = kwargs["additional_info"]["reward_comps"]["shape"][0]
+        if kwargs.get("additional_info") is None:
+            pass
+        elif kwargs["additional_info"].get("reward_comps") is None:
+            pass
+        else:        
+            rew_comp_dim = kwargs["additional_info"]["reward_comps"]["shape"][0]
+            self.rew_pred_head = mlp(
+                [input_dim] +[64]+ [rew_comp_dim],
+                get_activation_func(kwargs["hidden_activation"]),
+                get_activation_func(kwargs["output_activation"]),
+            )
 
     def shared_paras(self):
         return self.pi_net.parameters()
@@ -518,12 +532,27 @@ class ActionValue(nn.Module, Action_Distribution):
                 encoding = self.pi_net(flat_obs).view(bath_size, seq_len, -1)
             else:
                 encoding = self.pi_net(obs) 
-        expand_act = act.unsqueeze(-2).expand(-1, obs.shape[-2],-1) # (batch_size, seq_len, obs_dim)
-        input = torch.cat([encoding, expand_act], dim=-1)
+        if obs.dim() == 3:
+            expand_act = act.unsqueeze(-2).expand(-1, obs.shape[-2],-1) # (batch_size, seq_len, obs_dim)
+            input = torch.cat([encoding, expand_act], dim=-1)
+            q = self.q(input).view(-1, 1)
+        else:
+            q = self.q(torch.cat([encoding, act], dim=-1))
+            
+        # expand_act = act.unsqueeze(-2).expand(-1, obs.shape[-2],-1) # (batch_size, seq_len, obs_dim)
+        # input = torch.cat([encoding, expand_act], dim=-1)
 
-        q = self.q(input).view(-1, 1)
+        # q = self.q(input).view(-1, 1)
         return torch.squeeze(q, -1)
-
+    
+    def freeze(self):
+        for module in self.modules():
+            if isinstance(module, FMLP):
+                module.freeze()
+                
+    def predict_reward(self, obs, act):
+        encoding = self.pi_net(obs)
+        return self.rew_pred_head(torch.cat([encoding, act], dim=-1))
 
 class ActionValueDis(nn.Module, Action_Distribution):
     """
@@ -562,7 +591,7 @@ class ActionValueDistri(nn.Module):
         act_dim = kwargs["act_dim"]
         hidden_sizes = kwargs["hidden_sizes"]
         self.pi_net = kwargs["pi_net"]
-        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic"
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic" or kwargs["freeze_pi_net"] == "both"
         self.std_type = kwargs["std_type"]
         input_dim = self.pi_net.output_dim + act_dim        
 
