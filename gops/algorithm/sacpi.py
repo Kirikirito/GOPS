@@ -279,7 +279,7 @@ class SACPI(AlgorithmBase):
             rew_comps = data["reward_comps"]
             rew_pred = self.networks.q1.predict_reward(obs, act)
             rew_loss = torch.mean((rew_pred - rew_comps) ** 2)
-            q1_loss += rew_loss
+            loss_q1 += rew_loss
         else:
             rew_loss = None
 

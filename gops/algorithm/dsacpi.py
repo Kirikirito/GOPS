@@ -297,6 +297,13 @@ class DSACPI(AlgorithmBase):
         else:
             idx = None
             per = None
+        if data.get("reward_comps", None) is not None and self.pred_reward and obs.dim()<=2:  # need to learn reward component
+            rew_comps = data["reward_comps"]
+            rew_pred = self.networks.q.predict_reward(obs, act)
+            rew_loss = torch.mean((rew_pred - rew_comps) ** 2)
+            q_loss += rew_loss
+        else:
+            rew_loss = None
         return q_loss, q.detach().mean(), q_std.detach().mean(), idx, per
 
     def __compute_target_q(self, r, done, q, q_std, q_next, log_prob_a_next):
