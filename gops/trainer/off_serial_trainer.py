@@ -37,7 +37,6 @@ class OffSerialTrainer:
 
         # create center network
         self.networks = self.alg.networks
-
         # create evaluation tasks
         self.evluate_tasks = TaskPool()
         self.last_eval_iteration = 0
@@ -48,10 +47,25 @@ class OffSerialTrainer:
         self.sampler_network_update_interval = kwargs.get("sampler_network_update_interval", 100)
         self.last_sampler_save_iteration = 0
         self.networks.eval()
+        
+        self.use_gpu = kwargs["use_gpu"]
+        if self.use_gpu:
+            self.networks.cuda()
 
         # initialize center network
         if kwargs["ini_network_dir"] is not None:
             self.networks.load_state_dict(torch.load(kwargs["ini_network_dir"]))
+        self.ini_buffer = kwargs.get("ini_buffer", None)
+        if self.ini_buffer is not None:
+            self.buffer.load_hd5(kwargs["ini_buffer"])
+            if hasattr(self.alg.networks, "load_optimizer"):
+                try:
+                    self.alg.networks.load_optimizer(kwargs["ini_buffer"])
+                except:
+                    print("Optimizer is not loaded")
+                    pass
+                
+            print("Buffer is loaded from ", kwargs["ini_buffer"])
 
         self.replay_batch_size = kwargs["replay_batch_size"]
         self.max_iteration = kwargs["max_iteration"]
@@ -64,6 +78,12 @@ class OffSerialTrainer:
         self.save_folder = kwargs["save_folder"]
         self.iteration = 0
         self.use_adapter = kwargs.get("policy_adapter_layers", None) is not None
+        self.freeze_q = kwargs.get("freeze_q", False)
+        self.freeze_policy = kwargs.get("freeze_policy", False)
+        
+        # save buffer
+        self.save_buffer = kwargs.get("save_buffer", False)
+
 
         self.writer = SummaryWriter(log_dir=self.save_folder, flush_secs=20)
         # flush tensorboard at the beginning
@@ -73,7 +93,7 @@ class OffSerialTrainer:
         self.writer.flush()
 
         # pre sampling
-        while self.buffer.size < kwargs["buffer_warm_size"]:
+        while self.buffer.size < kwargs["buffer_warm_size"] and not self.ini_buffer:
             samples, _ = ray.get(self.sampler.sample.remote())
             self.buffer.add_batch(samples)
 
@@ -81,6 +101,17 @@ class OffSerialTrainer:
         self.sampler_samples = None
         self.sampler_tb_dict = None
         self.total_time = 0
+        
+    def _replay(self):
+        replay_samples = self.buffer.sample_batch(self.replay_batch_size)
+        if self.use_gpu:
+            for k, v in replay_samples.items():
+                replay_samples[k] = v.to(self.networks.device, non_blocking=True)
+            torch.cuda.synchronize()
+        else:
+            for k, v in replay_samples.items():
+                replay_samples[k] = v.to(self.networks.device)
+        return replay_samples
 
     def step(self):
         # trainning phrase
@@ -102,11 +133,7 @@ class OffSerialTrainer:
                     self._add_sample_task()
         
         # replay
-        replay_samples = self.buffer.sample_batch(self.replay_batch_size)
-
-        # learning
-        for k, v in replay_samples.items():
-            replay_samples[k] = v.to(self.networks.device)
+        replay_samples = self._replay()
 
         if self.per_flag:
             alg_tb_dict, idx, new_priority = self.alg.local_update(
@@ -243,6 +270,7 @@ class OffSerialTrainer:
         print("Training is finished!")
         self.iteration = self.max_iteration
         self.save_apprfunc()
+
         self.writer.flush()
 
     def save_apprfunc(self):
@@ -267,18 +295,38 @@ class OffSerialTrainer:
         with torch.no_grad():
             if (self.iteration - self.last_sampler_network_update_iteration) >= self.sampler_network_update_interval:
                 self.last_sampler_network_update_iteration = self.iteration
-                self.sampler.load_state_dict.remote(self.networks.state_dict())
+                ret = self.sampler.load_state_dict.remote(self.networks.state_dict())
+                ret = ray.get(ret)
+                # wait for the sampler to load the network
+                
             self.sampler_tasks.add(
                 self.sampler,
                 self.sampler.sample.remote()
             )
     def change_train_phase(self):
-        #self.networks.policy.freeze()
+        self.save_apprfunc()
+        if self.save_buffer:
+            buffer_dir = "/root/autodl-tmp/thesis" + self.save_folder
+            if not os.path.exists(buffer_dir):
+                os.makedirs(buffer_dir)
+            self.buffer.save_hd5(buffer_dir)
+            if hasattr(self.alg.networks, "save_optimizer"):
+                self.alg.networks.save_optimizer(buffer_dir)
+                
+        if self.freeze_policy:
+            self.networks.policy.freeze()
         #self.networks.log_alpha.requires_grad = False
         # self.networks.q1.freeze()
         # self.networks.q2.freeze()
+        if self.freeze_q:
+            if hasattr(self.networks, "q1"):
+                self.networks.q1.freeze()
+                self.networks.q2.freeze()
+            if hasattr(self.networks, "q"):
+                self.networks.q.freeze()
         self.buffer.change_mode()
         self.sampler.change_mode.remote()
+        self.evaluator.change_mode.remote()
         if self.use_adapter:
             self.networks.policy.enable_adapter()
             self.alg.change_mode()

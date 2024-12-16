@@ -139,6 +139,12 @@ class BaseSampler(metaclass=ABCMeta):
 
         )
         self.networks.train()
+        # find the data that has info about running mean obs
+        for d in data:
+            if "running_mean_obs" in d.info.keys() and d.info["running_mean_obs"] is not None:
+                self.running_mean_obs = d.info["running_mean_obs"]
+                # print("running mean obs: ", self.running_mean_obs)
+                break
         end_time = time.perf_counter()
         tb_info[tb_tags["sampler_time"]] = (end_time - start_time) * 1000
         return data, tb_info
@@ -268,9 +274,9 @@ class BaseSampler(metaclass=ABCMeta):
     def save(self, path):
         if not os.path.exists(path):
             os.makedirs(path)
-        # save running mean obs to an csv file
+        #save running mean obs to an csv file
         np.savetxt(path + "/running_mean_obs.csv"
-                   , self.running_mean_obs.mean(axis=0), delimiter=",")
+                   , self.running_mean_obs, delimiter=",",)
 
         
        

@@ -68,7 +68,7 @@ class NoiseData(gym.Wrapper):
         self.add_to_info = add_to_info
         self.rel_noise_scale = rel_noise_scale
         if self.rel_noise_scale:
-            self.running_mean_delta_obs = 0
+            self.running_mean_delta_obs = np.zeros_like(env.observation_space.sample())
             self.prev_obs = 0
         # self.seed(1919)
         self.record_step_info = record_step_info
@@ -78,7 +78,7 @@ class NoiseData(gym.Wrapper):
         if self.rel_noise_scale:
             delta_obs = np.abs(observation - self.prev_obs)
             self.prev_obs = observation
-            self.running_mean_delta_obs = 0.999 * self.running_mean_delta_obs + 0.001 * delta_obs
+            self.running_mean_delta_obs = 0.9999 * self.running_mean_delta_obs + 0.0001 * delta_obs
             scale = np.abs(self.running_mean_delta_obs) + 1e-6
         else:
             scale = 1
@@ -145,7 +145,7 @@ class NoiseData(gym.Wrapper):
         else:
             env_info = self.env.additional_info
         if self.add_to_info:
-            noise_sample = self.noise_observation(self.env.observation_space.sample())[1]
+            noise_sample = self.env.observation_space.sample()
             env_info["noise"] = {"shape": noise_sample.shape, "dtype": noise_sample.dtype}
         if self.record_step_info:
             env_info["step"] = {"shape": (1,), "dtype": np.int32}

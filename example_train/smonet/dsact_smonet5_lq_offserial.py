@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymsnaium-style")
 
     parser.add_argument("--obs_noise_type", type=str, default= 'normal')
-    parser.add_argument("--obs_noise_data", type=float,nargs='+', default= [0, 0.05], help="noise data")
+    parser.add_argument("--obs_noise_data", type=float,nargs='+', default= [0, 0.1], help="noise data")
     parser.add_argument("--add_to_info", type=bool, default= True)
     parser.add_argument("--rel_noise_scale", type=bool, default= True)
     parser.add_argument("--augment_act", type=bool,default=False, help="Augment action")
@@ -56,7 +56,9 @@ if __name__ == "__main__":
 
     ################################################
     # 2.1 Parameters of value approximate function
-    parser.add_argument("--freeze_q", type=bool, default=True, help="Freeze Q")
+    parser.add_argument("--freeze_q", type=bool, default=False, help="Freeze Q")
+    parser.add_argument("--freeze_policy", type=bool, default=True, help="Freeze policy")
+    parser.add_argument("--add_noise", type=bool, default=False, help="Add noise")
     parser.add_argument("--loss_weight", type=float, default=1, help="tau decay factor")
     parser.add_argument("--value_kernel", type=str, default= '1_8_1', help="kernel size")
     parser.add_argument("--policy_kernel", type=str, default= '1_8_1', help="kernel size")
@@ -73,7 +75,7 @@ if __name__ == "__main__":
         default="ActionValueDistri",
         help="Options: StateValue/ActionValue/ActionValueDis/ActionValueDistri",
     )
-    parser.add_argument("--value_func_type", type=str, default="SMONET", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
+    parser.add_argument("--value_func_type", type=str, default="SMONET5", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS")
     value_func_type = parser.parse_known_args()[0].value_func_type
     parser.add_argument("--value_hidden_sizes", type=list, default=[64,64])
     parser.add_argument(
@@ -92,7 +94,7 @@ if __name__ == "__main__":
         help="Options: None/DetermPolicy/FiniteHorizonPolicy/StochaPolicy",
     )
     parser.add_argument(
-        "--policy_func_type", type=str, default="SMONET", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS"
+        "--policy_func_type", type=str, default="SMONET5", help="Options: MLP/CNN/CNN_SHARED/RNN/POLY/GAUSS"
     )
     parser.add_argument(
         "--policy_act_distribution",
@@ -133,12 +135,22 @@ if __name__ == "__main__":
     )
     # Maximum iteration number
     parser.add_argument("--max_iteration", type=int, default=15000)
-    parser.add_argument("--freeze_iteration", type=int, default=5000)
+    parser.add_argument("--freeze_iteration", type=int, default=10000)
     parser.add_argument(
         "--ini_network_dir",
         type=str,
         default=None
     )
+    parser.add_argument(
+        "--save_buffer",
+        type=bool,
+        default=True
+    )
+    # parser.add_argument(
+    #     "--ini_buffer",
+    #     type=str,
+    #     default="/root/autodl-tmp/thesis/root/thesisexp/gops/results/pyth_lq/DSACT_241126-223153/buffer.h5"
+    # )
     trainer_type = parser.parse_known_args()[0].trainer
 
     # 4.1. Parameters for off_serial_trainer

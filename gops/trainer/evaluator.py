@@ -51,8 +51,15 @@ class Evaluator:
         })
         self.env = create_env(**kwargs)
         self.env_id = kwargs["env_id"]
+        self.seq_len = kwargs.get("seq_len", 1)
+        self.freeze_iteration = kwargs.get("freeze_iteration", 0)
+        if self.freeze_iteration > 0:
+            self.seq_len_after_freeze = self.seq_len
+            self.seq_len = 1
+        else:
+            self.seq_len_after_freeze = self.seq_len
 
-        self.obs_buffer = ObsBuffer(kwargs.get("seq_len", 1)) # for backward compatibility
+        self.obs_buffer = ObsBuffer(self.seq_len)
 
         _, self.env = set_seed(kwargs["trainer"], kwargs["seed"], index + 400, self.env)
 
@@ -233,4 +240,8 @@ class Evaluator:
             "afr_std": afr_std,
         }
         return eval_result
+    
+    def change_mode(self):
+        self.seq_len = self.seq_len_after_freeze
+        self.obs_buffer = ObsBuffer(self.seq_len)
 

@@ -58,8 +58,8 @@ if __name__ == "__main__":
     # 2.1 Parameters of value approximate function
     parser.add_argument("--freeze_q", type=bool, default=True, help="Freeze Q")
     parser.add_argument("--loss_weight", type=float, default=1, help="tau decay factor")
-    parser.add_argument("--value_kernel", type=str, default= '1_8_1', help="kernel size")
-    parser.add_argument("--policy_kernel", type=str, default= '1_8_1', help="kernel size")
+    parser.add_argument("--value_kernel", type=str, default= '1_5_4', help="kernel size")
+    parser.add_argument("--policy_kernel", type=str, default= '1_5_4', help="kernel size")
     loss_weight = parser.parse_known_args()[0].loss_weight
     value_kernel = parser.parse_known_args()[0].value_kernel
     value_kernel_size = [int(i) for i in value_kernel.split('_')]
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     )
     # Maximum iteration number
     parser.add_argument("--max_iteration", type=int, default=15000)
-    parser.add_argument("--freeze_iteration", type=int, default=5000)
+    parser.add_argument("--freeze_iteration", type=int, default=1)
     parser.add_argument(
         "--ini_network_dir",
         type=str,

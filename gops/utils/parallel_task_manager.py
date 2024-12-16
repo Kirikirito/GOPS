@@ -45,6 +45,8 @@ class TaskPool(object):
         pending = list(self._tasks)
         if pending:
             ready, _ = ray.wait(pending, num_returns=len(pending), timeout=0)
+        else:
+            ready = []
         return len(ready)
 
     @property
