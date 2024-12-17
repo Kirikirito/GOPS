@@ -145,7 +145,7 @@ def get_apprfunc_dict(key: str, **kwargs):
             var["hidden_sizes"] = kwargs[key + "_hidden_sizes"]
             var["hidden_activation"] = kwargs[key + "_hidden_activation"]
             var["output_activation"] = kwargs[key + "_output_activation"]
-    elif apprfunc_type == "SMONET" or apprfunc_type == "SMONET0" or apprfunc_type == "SMONET2" or apprfunc_type == "SMONET3" or apprfunc_type == "SMONET4" or apprfunc_type == "SMONET5":
+    elif apprfunc_type == "SMONET" or apprfunc_type == "SMONET0" or apprfunc_type == "SMONET2" or apprfunc_type == "SMONET3" or apprfunc_type == "SMONET4" or apprfunc_type == "SMONET5" or apprfunc_type == "SMONET6":
         var["hidden_sizes"] = kwargs[key + "_hidden_sizes"]
         var["hidden_activation"] = kwargs[key + "_hidden_activation"]
         var["output_activation"] = kwargs[key + "_output_activation"]
