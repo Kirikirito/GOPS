@@ -188,6 +188,9 @@ class ReplayBuffer:
     def change_mode(self):
         self.enable_noise = self.add_noise
         self.seq_len = self.seq_len_after_freeze
+        
+    def enable_seq(self):
+        self.seq_len = self.seq_len_after_freeze    
 
     def __len__(self):
         return self.buf.size

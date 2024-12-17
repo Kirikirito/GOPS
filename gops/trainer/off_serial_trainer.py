@@ -80,6 +80,11 @@ class OffSerialTrainer:
         self.use_adapter = kwargs.get("policy_adapter_layers", None) is not None
         self.freeze_q = kwargs.get("freeze_q", False)
         self.freeze_policy = kwargs.get("freeze_policy", False)
+        self.enable_seq = kwargs.get("enable_seq", False)
+        if self.enable_seq:
+            self.buffer.enable_seq()
+            self.sampler.change_mode.remote()
+            self.evaluator.change_mode.remote()
         
         # save buffer
         self.save_buffer = kwargs.get("save_buffer", False)

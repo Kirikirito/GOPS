@@ -74,10 +74,16 @@ def get_apprfunc_dict(key: str, **kwargs):
     apprfunc_type = kwargs[key + "_func_type"]
     if key + "_output_activation" not in kwargs.keys():
         kwargs[key + "_output_activation"] = "linear"
-    if apprfunc_type == "MLP" or apprfunc_type == "RNN":
+    if apprfunc_type == "MLP":
         var["hidden_sizes"] = kwargs[key + "_hidden_sizes"]
         var["hidden_activation"] = kwargs[key + "_hidden_activation"]
         var["output_activation"] = kwargs[key + "_output_activation"]
+    elif apprfunc_type == "RNN":
+        var["hidden_sizes"] = kwargs[key + "_hidden_sizes"]
+        var["hidden_activation"] = kwargs[key + "_hidden_activation"]
+        var["output_activation"] = kwargs[key + "_output_activation"]
+        var["rnn_type"] = kwargs[key + "_rnn_type"]
+        var["num_layers"] = kwargs[key + "_num_layers"]
     elif apprfunc_type == "GAUSS":
         var["num_kernel"] = kwargs[key + "_num_kernel"]
     elif apprfunc_type == "CNN":
