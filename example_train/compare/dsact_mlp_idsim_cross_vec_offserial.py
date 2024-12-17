@@ -225,7 +225,7 @@ if __name__ == "__main__":
     # 7. Data savings
     parser.add_argument("--save_folder", type=str, default=None)
     # Save value/policy every N updates
-    parser.add_argument("--apprfunc_save_interval", type=int, default=50000)
+    parser.add_argument("--apprfunc_save_interval", type=int, default=100000)
     # Save key info every N updates
     parser.add_argument("--log_save_interval", type=int, default=1000)
 

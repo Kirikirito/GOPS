@@ -337,11 +337,17 @@ class ActionValue(nn.Module, Action_Distribution):
         )
         self.action_distribution_cls = kwargs["action_distribution_cls"]
         rew_comp_dim = kwargs["additional_info"]["reward_comps"]["shape"][0]
-        self.rew_pred_head = mlp(
-            [input_dim] +[64]+ [rew_comp_dim],
-            get_activation_func(kwargs["hidden_activation"]),
-            get_activation_func(kwargs["output_activation"]),
-        )
+        if kwargs.get("additional_info") is None:
+            pass
+        elif kwargs["additional_info"].get("reward_comps") is None:
+            pass
+        else:        
+            rew_comp_dim = kwargs["additional_info"]["reward_comps"]["shape"][0]
+            self.rew_pred_head = mlp(
+                [input_dim] +[64]+ [rew_comp_dim],
+                get_activation_func(kwargs["hidden_activation"]),
+                get_activation_func(kwargs["output_activation"]),
+            )
 
     def shared_paras(self):
         return self.pi_net.parameters()
@@ -381,7 +387,7 @@ class ActionValueDistri(nn.Module):
         act_dim = kwargs["act_dim"]
         hidden_sizes = kwargs["hidden_sizes"]
         self.pi_net = kwargs["pi_net"]
-        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic"
+        self.freeze_pi_net = kwargs["freeze_pi_net"] == "critic" or kwargs["freeze_pi_net"] == "both"
         self.std_type = kwargs["std_type"]
         input_dim = self.pi_net.output_dim + act_dim
         if self.std_type == "mlp_shared":
