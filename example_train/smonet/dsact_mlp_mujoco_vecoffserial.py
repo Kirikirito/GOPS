@@ -29,16 +29,16 @@ if __name__ == "__main__":
 
     ################################################
     # Key Parameters for usersD
-    parser.add_argument("--env_id", type=str, default="gym_halfcheetah", help="id of environment")
+    parser.add_argument("--env_id", type=str, default="gym_humanoid", help="id of environment")
     parser.add_argument("--algorithm", type=str, default="DSACT", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=True, help="Enable CUDA")
     parser.add_argument("--seed", default=12345, help="Global seed")
 
     ################################################
     # 1. Parameters for environment
-    # parser.add_argument("--vector_env_num", type=int, default=4, help="Number of vector envs")
-    # parser.add_argument("--vector_env_type", type=str, default='async', help="Options: sync/asyncFalse")
-    # parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymnasium-style")
+    parser.add_argument("--vector_env_num", type=int, default=20, help="Number of vector envs")
+    parser.add_argument("--vector_env_type", type=str, default='async', help="Options: sync/async")
+    parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymsnaium-style")
 
     parser.add_argument("--obs_noise_type", type=str, default= 'uniform')
     parser.add_argument("--obs_noise_data", type=float,nargs='+', default= [0, 0], help="noise data")
@@ -55,9 +55,10 @@ if __name__ == "__main__":
     ################################################
     # 2.1 Parameters of value approximate function
     parser.add_argument("--freeze_q", type=bool, default=False, help="Freeze Q")
-    parser.add_argument("--loss_weight", type=float, default=0.1, help="tau decay factor")
-    parser.add_argument("--value_kernel", type=str, default= '1_1_8_1', help="kernel size")
-    parser.add_argument("--policy_kernel", type=str, default= '1_1_8_1', help="kernel size")
+    parser.add_argument("--freeze_policy", type=bool, default=False, help="Freeze Q")
+    parser.add_argument("--loss_weight", type=float, default=0.0001, help="tau decay factor")
+    parser.add_argument("--value_kernel", type=str, default= '1_1_5_4', help="kernel size")
+    parser.add_argument("--policy_kernel", type=str, default= '1_1_5_4', help="kernel size")
     loss_weight = parser.parse_known_args()[0].loss_weight
     value_kernel = parser.parse_known_args()[0].value_kernel
     value_kernel_size = [int(i) for i in value_kernel.split('_')]
@@ -127,10 +128,27 @@ if __name__ == "__main__":
         help="Options: on_serial_trainer, on_sync_trainer, off_serial_trainer, off_async_trainer",
     )
     # Maximum iteration number
-    parser.add_argument("--max_iteration", type=int, default=1800_000)
-    parser.add_argument("--freeze_iteration", type=int, default=1800_001)
+    parser.add_argument("--max_iteration", type=int, default=1500_000)
+    parser.add_argument("--freeze_iteration", type=int, default=1500001)
+    env_id = parser.parse_known_args()[0].env_id
+    base_dir = "/root/thesisexp/data/training/mujoco_smonet5_punish_noise/241202-235546/dsact-smonet5-mujoco-env-id-12345-1_1_5_4-0.001-False-run0"
+    ini_network_dir = base_dir.replace("env-id", env_id) + "/apprfunc/apprfunc_1500000.pkl"
+    ini_network_dir = ini_network_dir.replace("/thesisexp/data", "/autodl-tmp")
+    
     parser.add_argument(
         "--ini_network_dir",
+        type=str,
+        default=None
+    )
+    parser.add_argument(
+        "--save_buffer",
+        type=bool,
+        default=False
+    )
+    ini_buffer = "/root/autodl-tmp/thesis"+ base_dir.replace("env-id", env_id) 
+    
+    parser.add_argument(
+        "--ini_buffer",
         type=str,
         default=None
     )
@@ -153,7 +171,7 @@ if __name__ == "__main__":
     # 5. Parameters for sampler
     parser.add_argument("--sampler_name", type=str, default="off_sampler", help="Options: on_sampler/off_sampler")
     # Batch size of sampler for buffer store
-    parser.add_argument("--sample_batch_size", type=int, default=20)
+    parser.add_argument("--sample_batch_size", type=int, default=400)
     # Add noise to action for better exploration
     parser.add_argument("--noise_params", type=dict, default=None)
 

@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument("--gym2gymnasium", type=bool, default=True, help="Convert Gym-style env to Gymsnaium-style")
 
     parser.add_argument("--obs_noise_type", type=str, default= 'uniform')
-    parser.add_argument("--obs_noise_data", type=float,nargs='+', default= [0, 0.05], help="noise data")
+    parser.add_argument("--obs_noise_data", type=float,nargs='+', default= [0, 0], help="noise data")
     parser.add_argument("--add_to_info", type=bool, default= True)
     parser.add_argument("--rel_noise_scale", type=bool, default= True)
     parser.add_argument("--augment_act", type=bool,default=False, help="Augment action")
