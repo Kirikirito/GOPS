@@ -22,7 +22,8 @@ from gops.utils.plot_evaluation import plot_all
 from gops.utils.tensorboard_setup import start_tensorboard, save_tb_to_csv
 
 os.environ["OMP_NUM_THREADS"] = "4"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+
 if __name__ == "__main__":
     # Parameters Setup
     parser = argparse.ArgumentParser()
@@ -30,9 +31,9 @@ if __name__ == "__main__":
     ################################################
     # Key Parameters for usersD
     parser.add_argument("--env_id", type=str, default="gym_humanoid", help="id of environment")
-    parser.add_argument("--algorithm", type=str, default="DSACT", help="RL algorithm")
+    parser.add_argument("--algorithm", type=str, default="DSACT0", help="RL algorithm")
     parser.add_argument("--enable_cuda", default=True, help="Enable CUDA")
-    parser.add_argument("--seed", default=12345, help="Global seed")
+    parser.add_argument("--seed", default=22345, help="Global seed")
 
     ################################################
     # 1. Parameters for environment
